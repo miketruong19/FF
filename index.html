@@ -304,9 +304,9 @@ body.gm .gm-banner { display: block; }
 <div id="qEditor" class="overlay"><div class="ed-box">
   <h2 id="edTitle">Add a question</h2>
   <label class="q"><span>Question</span><input type="text" id="edQ" maxlength="200" placeholder="Name something people do when they can't sleep"></label>
-  <div class="hint" style="margin:0 0 10px">Points = out of 100 people surveyed, how many would give this answer. All answers together must add up to 100.</div>
+  <div class="hint" style="margin:0 0 10px">Points = out of 100 people surveyed, how many gave this answer. Only the popular answers go on the board, so the total is usually under 100. It can't go over 100.</div>
   <div class="ed-rows" id="edRows"></div>
-  <div class="ed-total">Total <span class="sum" id="edSum">0</span> / 100 <span class="msg" id="edMsg"></span><button id="edFill" class="small">Put the rest on the last answer</button></div>
+  <div class="ed-total">Total <span class="sum" id="edSum">0</span> / 100 <span class="msg" id="edMsg"></span></div>
   <div class="ed-actions"><button id="edSave" class="primary">Save</button><button id="edCancel">Cancel</button></div>
 </div></div>
 
@@ -386,7 +386,7 @@ function parseRows(rows) {
     if (problems.length) { flags.push({ row: rowNo, level: 'bad', msg: 'Row ' + rowNo + ' skipped: ' + problems.join('; ') }); return; }
     for (let i = 1; i < answers.length; i++) if (answers[i].points > answers[i - 1].points) { warns.push('points are not in rank order'); break; }
     const total = answers.reduce((t, a) => t + a.points, 0);
-    if (total !== 100) warns.push('points total ' + total + ', not 100');
+    if (total > 100) { flags.push({ row: rowNo, level: 'bad', msg: 'Row ' + rowNo + ' skipped: points total ' + total + ', more than 100 people' }); return; }
     if (warns.length) flags.push({ row: rowNo, level: 'warn', msg: 'Row ' + rowNo + ' loaded, but ' + warns.join('; ') });
     questions.push({ q, answers, row: rowNo });
   });
@@ -430,7 +430,7 @@ function renderSetup() {
         const total = q.answers.reduce((t, a) => t + a.points, 0);
         return '<tr><td class="n">' + (i + 1) + '</td><td>' + esc(q.q) + '</td><td class="ans">' +
           q.answers.map((a) => '<b>' + esc(a.text) + '</b> (' + a.points + ')').join(', ') +
-          ' <div class="tot' + (total === 100 ? '' : ' bad') + '">total ' + total + '</div></td>' +
+          ' <div class="tot' + (total > 100 ? ' bad' : '') + '">' + total + ' of 100 people</div></td>' +
           '<td class="act"><button data-edit="' + i + '">Edit</button><button data-up="' + i + '"' + (i === 0 ? ' disabled' : '') + '>▲</button><button data-down="' + i + '"' + (i === S.questions.length - 1 ? ' disabled' : '') + '>▼</button><button data-del="' + i + '" class="danger">✕</button></td></tr>';
       }).join('') + '</table></div>';
   } else $('qlist').innerHTML = '';
@@ -505,33 +505,22 @@ function readEditor() {
     const a = as[k].value.trim(), p = ps[k].value.trim();
     if (!a && !p) continue;
     if (!a) { errors.push('answer ' + (k + 1) + ' has points but no text'); continue; }
-    if (!isNum(p) || Number(p) < 0) { errors.push('answer ' + (k + 1) + ' needs points'); continue; }
+    if (!isNum(p) || Number(p) < 1) { errors.push('answer ' + (k + 1) + ' needs points (at least 1)'); continue; }
     answers.push({ text: a, points: Math.round(Number(p)) });
   }
   const total = answers.reduce((t, x) => t + x.points, 0);
   const q = $('edQ').value.trim();
   if (!q) errors.push('question text is empty');
   if (!answers.length) errors.push('add at least one answer');
-  if (total !== 100) errors.push('points must total 100 (now ' + total + ')');
+  if (total > 100) errors.push('points total ' + total + ', but only 100 people were asked');
   return { q, answers, total, errors };
 }
 function editorCheck() {
   const r = readEditor();
   $('edSum').textContent = r.total;
-  $('edSum').className = 'sum ' + (r.total === 100 ? 'ok' : 'bad');
-  $('edMsg').textContent = r.errors.length ? r.errors[0] : 'Answers are sorted by points when you save.';
+  $('edSum').className = 'sum ' + (r.total > 100 ? 'bad' : 'ok');
+  $('edMsg').textContent = r.errors.length ? r.errors[0] : (100 - r.total) + ' people gave other answers. Answers are sorted by points when you save.';
   $('edSave').disabled = r.errors.length > 0;
-  $('edFill').style.display = (r.total < 100 && r.answers.length) ? '' : 'none';
-}
-function editorFill() {
-  // put whatever is missing from 100 onto the last filled-in answer
-  const as = $('edRows').querySelectorAll('input.a'), ps = $('edRows').querySelectorAll('input.p');
-  let last = -1, total = 0;
-  for (let k = 0; k < MAX; k++) { if (as[k].value.trim()) { last = k; total += isNum(ps[k].value) ? Math.round(Number(ps[k].value)) : 0; } }
-  if (last < 0) return;
-  const cur = isNum(ps[last].value) ? Math.round(Number(ps[last].value)) : 0;
-  ps[last].value = Math.max(0, cur + (100 - total));
-  editorCheck();
 }
 function saveEditor() {
   const r = readEditor();
@@ -792,7 +781,6 @@ $('qlist').addEventListener('click', (e) => {
 });
 $('edRows').addEventListener('input', editorCheck);
 $('edQ').addEventListener('input', editorCheck);
-$('edFill').addEventListener('click', editorFill);
 $('edSave').addEventListener('click', saveEditor);
 $('edCancel').addEventListener('click', closeEditor);
 $('nameA').addEventListener('change', () => { readNames(); save(); });

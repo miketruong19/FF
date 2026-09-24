@@ -28,7 +28,7 @@ Opening `index.html` straight from the Files app does not work well in Safari, s
 Two ways, mix them freely:
 
 - **In the app**: Setup → **+ Add a question**. Type the question and up to 8 answers with points.
-  Save only unlocks when the points total exactly 100. Answers get sorted by points on save.
+  Points are how many of the 100 people surveyed gave that answer, so the total can't go over 100 (it's usually under). Answers get sorted by points on save.
   Each question in the list has Edit, move up/down and delete buttons. **Download as .csv** backs the whole list up.
 - **Spreadsheet**: upload a `.xlsx` or `.csv` in the format below.
 
@@ -41,7 +41,7 @@ Question | Answer 1 | Points 1 | Answer 2 | Points 2 | ... | Answer 8 | Points 8
 ```
 
 Rows with no question, no answers, or non-number points are skipped and listed on the setup screen.
-Rows whose points are not in descending order, or don't total 100, are loaded but get a warning.
+Rows whose points total more than 100 are skipped. Rows not in descending order load with a warning.
 
 ## How a round goes
 
