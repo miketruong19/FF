@@ -23,6 +23,15 @@ No server, no login. Once loaded it works offline.
 
 Opening `index.html` straight from the Files app does not work well in Safari, so use a URL.
 
+## Adding questions
+
+Two ways, mix them freely:
+
+- **In the app**: Setup → **+ Add a question**. Type the question and up to 8 answers with points.
+  Save only unlocks when the points total exactly 100. Answers get sorted by points on save.
+  Each question in the list has Edit, move up/down and delete buttons. **Download as .csv** backs the whole list up.
+- **Spreadsheet**: upload a `.xlsx` or `.csv` in the format below.
+
 ## Spreadsheet format
 
 One row per question, best answer first. A header row is fine.
@@ -32,11 +41,12 @@ Question | Answer 1 | Points 1 | Answer 2 | Points 2 | ... | Answer 8 | Points 8
 ```
 
 Rows with no question, no answers, or non-number points are skipped and listed on the setup screen.
-Rows whose points are not in descending order are loaded but get a warning.
+Rows whose points are not in descending order, or don't total 100, are loaded but get a warning.
 
 ## How a round goes
 
-1. **Setup**: upload the sheet, name the teams, check the question list, Start game.
+1. **Setup**: add questions or upload a sheet, name the teams, check the list, Start game.
+   The **Setup** button on the other screens brings you back here; **Continue game** resumes where you were.
 2. **Face-off**: GM reads the question, taps **Arm buzzers**. Each team slaps their half of the screen.
    First touch wins and shows its lead in milliseconds. Taps before arming flash red and do nothing.
    GM taps **Check answer**, turns the iPad, picks what the player said (or **Not on board**).

@@ -73,6 +73,27 @@ table.qs th { color: var(--muted); font-weight: 600; }
 table.qs td.n { color: var(--muted); width: 32px; }
 table.qs .ans { color: var(--muted); }
 table.qs .ans b { color: var(--text); font-weight: 600; }
+table.qs td.act { white-space: nowrap; width: 1%; }
+table.qs td.act button { min-height: 36px; padding: 4px 10px; font-size: 13px; margin-left: 4px; }
+table.qs .tot { color: var(--muted); font-size: 12px; }
+table.qs .tot.bad { color: var(--red); font-weight: 700; }
+.ed-box { background: var(--panel); border-radius: 18px; padding: 18px; width: min(760px, 100%); max-height: 100%; overflow: auto; -webkit-overflow-scrolling: touch; }
+.ed-box h2 { margin: 0 0 12px; font-size: 20px; }
+.ed-box label.q { display: block; font-weight: 700; margin-bottom: 12px; }
+.ed-box label.q span { display: block; margin-bottom: 6px; color: var(--muted); font-size: 13px; }
+.ed-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; margin-bottom: 12px; }
+.ed-row { display: flex; align-items: center; gap: 6px; }
+.ed-row .n { color: var(--muted); width: 22px; text-align: right; font-weight: 700; font-size: 14px; }
+.ed-row input.a { flex: 1; min-width: 0; }
+.ed-row input.p { width: 74px; text-align: center; }
+.ed-total { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; font-weight: 700; flex-wrap: wrap; }
+.ed-total .sum { font-size: 26px; }
+.ed-total .sum.ok { color: var(--green); }
+.ed-total .sum.bad { color: var(--red); }
+.ed-total .msg { color: var(--muted); font-weight: 500; font-size: 14px; flex: 1; }
+.ed-actions { display: flex; gap: 10px; }
+.ed-actions button { flex: 1; }
+@media (max-width: 700px) { .ed-rows { grid-template-columns: 1fr; } }
 
 /* ---------- Face-off ---------- */
 #faceoff { background: var(--bg); }
@@ -210,12 +231,13 @@ body.gm .gm-banner { display: block; }
     <div class="card">
       <h2>1. Questions</h2>
       <div class="row">
+        <button id="btnAddQ" class="primary">+ Add a question</button>
         <label class="filebtn">Upload spreadsheet (.xlsx / .csv)<input type="file" id="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
         <div id="fileInfo" class="hint" style="margin:0"></div>
       </div>
       <div class="hint">One row per question, best answer first. Columns:
         <code>Question | Answer 1 | Points 1 | Answer 2 | Points 2 | … | Answer 8 | Points 8</code>.
-        A header row is fine. Bad rows are skipped and listed below. The last sheet you load is remembered on this iPad.</div>
+        A header row is fine. Bad rows are skipped and listed below. Questions are remembered on this iPad.</div>
     </div>
 
     <div class="card teams">
@@ -279,6 +301,14 @@ body.gm .gm-banner { display: block; }
   </footer>
 </section>
 
+<div id="qEditor" class="overlay"><div class="ed-box">
+  <h2 id="edTitle">Add a question</h2>
+  <label class="q"><span>Question</span><input type="text" id="edQ" maxlength="200" placeholder="Name something people do when they can't sleep"></label>
+  <div class="ed-rows" id="edRows"></div>
+  <div class="ed-total">Total <span class="sum" id="edSum">0</span> / 100 <span class="msg" id="edMsg"></span><button id="edFill" class="small">Put the rest on the last answer</button></div>
+  <div class="ed-actions"><button id="edSave" class="primary">Save</button><button id="edCancel">Cancel</button></div>
+</div></div>
+
 <div id="gmPanel" class="overlay"><div class="gm-box">
   <h3>GM only — turn the iPad toward you</h3>
   <div class="who" id="gmWho"></div>
@@ -304,7 +334,7 @@ function defaultState() {
   return {
     questions: [], flags: [], sheetName: '',
     teams: [{ name: 'Team A', score: 0 }, { name: 'Team B', score: 0 }],
-    qi: 0, phase: 'setup', round: null, gmView: false, qHidden: false,
+    qi: 0, phase: 'setup', round: null, gmView: false, qHidden: false, setupOpen: false,
   };
 }
 function newRound() {
@@ -354,6 +384,8 @@ function parseRows(rows) {
     if (!answers.length && q) problems.push('no answers');
     if (problems.length) { flags.push({ row: rowNo, level: 'bad', msg: 'Row ' + rowNo + ' skipped: ' + problems.join('; ') }); return; }
     for (let i = 1; i < answers.length; i++) if (answers[i].points > answers[i - 1].points) { warns.push('points are not in rank order'); break; }
+    const total = answers.reduce((t, a) => t + a.points, 0);
+    if (total !== 100) warns.push('points total ' + total + ', not 100');
     if (warns.length) flags.push({ row: rowNo, level: 'warn', msg: 'Row ' + rowNo + ' loaded, but ' + warns.join('; ') });
     questions.push({ q, answers, row: rowNo });
   });
@@ -386,16 +418,128 @@ function handleFile(file) {
 // ---------- setup screen ----------
 function renderSetup() {
   $('nameA').value = S.teams[0].name; $('nameB').value = S.teams[1].name;
-  $('fileInfo').textContent = S.questions.length ? (S.sheetName + ' — ' + S.questions.length + ' question' + (S.questions.length === 1 ? '' : 's') + ' loaded') : 'No spreadsheet loaded yet.';
+  $('fileInfo').textContent = S.questions.length ? (S.questions.length + ' question' + (S.questions.length === 1 ? '' : 's') + (S.sheetName ? ' (from ' + S.sheetName + ')' : '')) : 'No questions yet. Add one or upload a sheet.';
   $('btnStart').disabled = !S.questions.length;
   $('btnContinue').style.display = (S.phase !== 'setup' && S.round) ? '' : 'none';
   $('startHint').textContent = S.phase !== 'setup' && S.round ? ('A game is in progress: ' + tname(0) + ' ' + S.teams[0].score + ' – ' + tname(1) + ' ' + S.teams[1].score + ', question ' + (S.qi + 1) + '. Start game resets scores.') : '';
   $('flags').innerHTML = S.flags.map((f) => '<div class="flag ' + f.level + '">' + esc(f.msg) + '</div>').join('');
   if (S.questions.length) {
-    $('qlist').innerHTML = '<div class="card"><h2>Loaded questions (check for mistakes)</h2><table class="qs"><tr><th>#</th><th>Question</th><th>Answers (points)</th></tr>' +
-      S.questions.map((q, i) => '<tr><td class="n">' + (i + 1) + '</td><td>' + esc(q.q) + '</td><td class="ans">' +
-        q.answers.map((a) => '<b>' + esc(a.text) + '</b> (' + a.points + ')').join(', ') + '</td></tr>').join('') + '</table></div>';
+    $('qlist').innerHTML = '<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">Questions (tap Edit to fix)</h2><button id="btnExport" class="small">Download as .csv</button></div><table class="qs"><tr><th>#</th><th>Question</th><th>Answers (points)</th><th></th></tr>' +
+      S.questions.map((q, i) => {
+        const total = q.answers.reduce((t, a) => t + a.points, 0);
+        return '<tr><td class="n">' + (i + 1) + '</td><td>' + esc(q.q) + '</td><td class="ans">' +
+          q.answers.map((a) => '<b>' + esc(a.text) + '</b> (' + a.points + ')').join(', ') +
+          ' <div class="tot' + (total === 100 ? '' : ' bad') + '">total ' + total + '</div></td>' +
+          '<td class="act"><button data-edit="' + i + '">Edit</button><button data-up="' + i + '"' + (i === 0 ? ' disabled' : '') + '>▲</button><button data-down="' + i + '"' + (i === S.questions.length - 1 ? ' disabled' : '') + '>▼</button><button data-del="' + i + '" class="danger">✕</button></td></tr>';
+      }).join('') + '</table></div>';
   } else $('qlist').innerHTML = '';
+}
+function questionsChanged(editedIndex) {
+  // keep the game state sane if questions change mid-game
+  if (S.qi >= S.questions.length) S.qi = Math.max(0, S.questions.length - 1);
+  if (!S.questions.length) { S.phase = 'setup'; S.round = null; }
+  else if (S.round && (editedIndex == null || editedIndex === S.qi)) S.round = newRound();
+  builtFor = -1;
+  save(); renderSetup();
+}
+function deleteQ(i) {
+  if (!confirm('Delete question ' + (i + 1) + '?\n' + S.questions[i].q)) return;
+  S.questions.splice(i, 1);
+  questionsChanged(null);
+}
+function moveQ(i, d) {
+  const j = i + d; if (j < 0 || j >= S.questions.length) return;
+  const t = S.questions[i]; S.questions[i] = S.questions[j]; S.questions[j] = t;
+  if (S.qi === i) S.qi = j; else if (S.qi === j) S.qi = i;
+  builtFor = -1; save(); renderSetup();
+}
+function exportCsv() {
+  const cell = (v) => { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  const head = ['Question']; for (let k = 1; k <= MAX; k++) head.push('Answer ' + k, 'Points ' + k);
+  const lines = [head.join(',')];
+  S.questions.forEach((q) => {
+    const r = [cell(q.q)];
+    for (let k = 0; k < MAX; k++) { const a = q.answers[k]; r.push(a ? cell(a.text) : '', a ? a.points : ''); }
+    lines.push(r.join(','));
+  });
+  const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'family-feud-questions.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+// ---------- question editor ----------
+let edIndex = -1;
+function buildEditor() {
+  const rows = $('edRows');
+  rows.innerHTML = '';
+  for (let k = 0; k < MAX; k++) {
+    const d = document.createElement('div');
+    d.className = 'ed-row';
+    d.innerHTML = '<span class="n">' + (k + 1) + '</span><input type="text" class="a" maxlength="60" placeholder="Answer ' + (k + 1) + '" data-k="' + k + '">' +
+      '<input type="number" class="p" inputmode="numeric" min="0" max="100" placeholder="pts" data-k="' + k + '">';
+    rows.appendChild(d);
+  }
+}
+function openEditor(i) {
+  edIndex = i;
+  const q = i >= 0 ? S.questions[i] : null;
+  $('edTitle').textContent = q ? 'Edit question ' + (i + 1) : 'Add a question';
+  $('edQ').value = q ? q.q : '';
+  const as = $('edRows').querySelectorAll('input.a'), ps = $('edRows').querySelectorAll('input.p');
+  for (let k = 0; k < MAX; k++) {
+    as[k].value = q && q.answers[k] ? q.answers[k].text : '';
+    ps[k].value = q && q.answers[k] ? q.answers[k].points : '';
+  }
+  editorCheck();
+  $('qEditor').classList.add('active');
+  if (!q) setTimeout(() => $('edQ').focus(), 50);
+}
+function closeEditor() { $('qEditor').classList.remove('active'); }
+function readEditor() {
+  const as = $('edRows').querySelectorAll('input.a'), ps = $('edRows').querySelectorAll('input.p');
+  const answers = [], errors = [];
+  for (let k = 0; k < MAX; k++) {
+    const a = as[k].value.trim(), p = ps[k].value.trim();
+    if (!a && !p) continue;
+    if (!a) { errors.push('answer ' + (k + 1) + ' has points but no text'); continue; }
+    if (!isNum(p) || Number(p) < 0) { errors.push('answer ' + (k + 1) + ' needs points'); continue; }
+    answers.push({ text: a, points: Math.round(Number(p)) });
+  }
+  const total = answers.reduce((t, x) => t + x.points, 0);
+  const q = $('edQ').value.trim();
+  if (!q) errors.push('question text is empty');
+  if (!answers.length) errors.push('add at least one answer');
+  if (total !== 100) errors.push('points must total 100 (now ' + total + ')');
+  return { q, answers, total, errors };
+}
+function editorCheck() {
+  const r = readEditor();
+  $('edSum').textContent = r.total;
+  $('edSum').className = 'sum ' + (r.total === 100 ? 'ok' : 'bad');
+  $('edMsg').textContent = r.errors.length ? r.errors[0] : 'Answers are sorted by points when you save.';
+  $('edSave').disabled = r.errors.length > 0;
+  $('edFill').style.display = (r.total < 100 && r.answers.length) ? '' : 'none';
+}
+function editorFill() {
+  // put whatever is missing from 100 onto the last filled-in answer
+  const as = $('edRows').querySelectorAll('input.a'), ps = $('edRows').querySelectorAll('input.p');
+  let last = -1, total = 0;
+  for (let k = 0; k < MAX; k++) { if (as[k].value.trim()) { last = k; total += isNum(ps[k].value) ? Math.round(Number(ps[k].value)) : 0; } }
+  if (last < 0) return;
+  const cur = isNum(ps[last].value) ? Math.round(Number(ps[last].value)) : 0;
+  ps[last].value = Math.max(0, cur + (100 - total));
+  editorCheck();
+}
+function saveEditor() {
+  const r = readEditor();
+  if (r.errors.length) { editorCheck(); return; }
+  r.answers.sort((a, b) => b.points - a.points);   // rank order: top answer first
+  const item = { q: r.q, answers: r.answers };
+  if (edIndex >= 0) S.questions[edIndex] = item; else S.questions.push(item);
+  closeEditor();
+  questionsChanged(edIndex >= 0 ? edIndex : -1);
 }
 function readNames() {
   S.teams[0].name = $('nameA').value.trim() || 'Team A';
@@ -405,10 +549,10 @@ function startGame() {
   readNames();
   S.teams[0].score = 0; S.teams[1].score = 0;
   S.qi = 0; S.round = newRound(); S.qHidden = false; S.gmView = false;
-  S.phase = 'faceoff'; save(); render();
+  S.phase = 'faceoff'; S.setupOpen = false; save(); render();
 }
-function continueGame() { readNames(); save(); render(); }
-function gotoSetup() { S.phase = 'setup'; S.gmView = false; save(); render(); }
+function continueGame() { readNames(); S.setupOpen = false; save(); render(); }
+function gotoSetup() { S.setupOpen = true; S.gmView = false; save(); render(); }
 
 // ---------- face-off ----------
 let buzzT1 = 0, leadTimer = null;
@@ -623,10 +767,11 @@ function renderBoard() {
 // ---------- top-level render ----------
 function render() {
   document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
-  $('gmToggle').style.display = S.phase === 'board' ? 'block' : 'none';
-  if (S.phase !== 'board') document.body.classList.remove('gm');
+  const onBoard = S.phase === 'board' && !S.setupOpen;
+  $('gmToggle').style.display = onBoard ? 'block' : 'none';
+  if (!onBoard) document.body.classList.remove('gm');
   closeGm();
-  if (S.phase === 'setup') { $('setup').classList.add('active'); renderSetup(); }
+  if (S.phase === 'setup' || S.setupOpen) { $('setup').classList.add('active'); renderSetup(); }
   else if (S.phase === 'faceoff') { $('faceoff').classList.add('active'); renderFaceoff(); }
   else { $('board').classList.add('active'); renderBoard(); }
 }
@@ -635,6 +780,20 @@ function render() {
 $('file').addEventListener('change', (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); e.target.value = ''; });
 $('btnStart').addEventListener('click', startGame);
 $('btnContinue').addEventListener('click', continueGame);
+$('btnAddQ').addEventListener('click', () => openEditor(-1));
+$('qlist').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.id === 'btnExport') exportCsv();
+  else if (b.dataset.edit != null) openEditor(Number(b.dataset.edit));
+  else if (b.dataset.del != null) deleteQ(Number(b.dataset.del));
+  else if (b.dataset.up != null) moveQ(Number(b.dataset.up), -1);
+  else if (b.dataset.down != null) moveQ(Number(b.dataset.down), 1);
+});
+$('edRows').addEventListener('input', editorCheck);
+$('edQ').addEventListener('input', editorCheck);
+$('edFill').addEventListener('click', editorFill);
+$('edSave').addEventListener('click', saveEditor);
+$('edCancel').addEventListener('click', closeEditor);
 $('nameA').addEventListener('change', () => { readNames(); save(); });
 $('nameB').addEventListener('change', () => { readNames(); save(); });
 
@@ -677,6 +836,7 @@ document.querySelectorAll('.give').forEach((b) => b.addEventListener('click', ()
 document.querySelectorAll('.tscore').forEach((b) => b.addEventListener('click', () => editScore(Number(b.dataset.t))));
 
 // ---------- boot ----------
+buildEditor();
 load();
 render();
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
