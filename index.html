@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Family Feud</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="data:,">
+<style>
+:root {
+  --bg: #0f172a;
+  --panel: #1e293b;
+  --panel2: #273449;
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --gold: #fbbf24;
+  --green: #22c55e;
+  --red: #ef4444;
+  --a: #2563eb;
+  --a-dark: #1e40af;
+  --b: #ea580c;
+  --b-dark: #9a3412;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  overflow: hidden; -webkit-user-select: none; user-select: none; touch-action: manipulation;
+}
+button, input { font: inherit; }
+button {
+  border: 0; border-radius: 12px; padding: 12px 18px; background: var(--panel2); color: var(--text);
+  font-weight: 700; cursor: pointer; min-height: 48px;
+}
+button:active { filter: brightness(1.25); }
+button:disabled { opacity: .4; }
+button.primary { background: var(--gold); color: #1c1917; }
+button.small { min-height: 40px; padding: 8px 12px; font-size: 14px; font-weight: 600; }
+button.danger { background: var(--red); }
+input[type=text] {
+  border: 0; border-radius: 10px; padding: 10px 12px; background: #0b1220; color: var(--text);
+  border: 1px solid #334155; width: 100%; -webkit-user-select: text; user-select: text;
+}
+#app { position: fixed; inset: 0; }
+.screen { display: none; position: absolute; inset: 0; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.screen.active { display: flex; flex-direction: column; }
+
+/* ---------- Setup ---------- */
+#setup { overflow: auto; -webkit-overflow-scrolling: touch; }
+.setup-wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px 60px; width: 100%; }
+.setup-wrap h1 { margin: 0 0 16px; font-size: 32px; color: var(--gold); }
+.card { background: var(--panel); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+.card h2 { margin: 0 0 10px; font-size: 16px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.filebtn { display: inline-block; background: var(--a); border-radius: 12px; padding: 12px 18px; font-weight: 700; cursor: pointer; }
+.filebtn input { display: none; }
+.hint { color: var(--muted); font-size: 14px; margin-top: 10px; line-height: 1.4; }
+.hint code { background: #0b1220; padding: 2px 6px; border-radius: 6px; }
+.teams { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.teams label { display: block; font-weight: 700; }
+.teams label span { display: block; margin-bottom: 6px; }
+.teams .ta span { color: #60a5fa; }
+.teams .tb span { color: #fb923c; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.flag { background: #3f1d1d; border-left: 4px solid var(--red); padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; font-size: 14px; }
+.flag.warn { background: #3b2f0b; border-left-color: var(--gold); }
+table.qs { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.qs th, table.qs td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #334155; vertical-align: top; }
+table.qs th { color: var(--muted); font-weight: 600; }
+table.qs td.n { color: var(--muted); width: 32px; }
+table.qs .ans { color: var(--muted); }
+table.qs .ans b { color: var(--text); font-weight: 600; }
+
+/* ---------- Face-off ---------- */
+#faceoff { background: var(--bg); }
+.fo-top { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--panel); }
+.fo-q { flex: 1; font-size: 22px; font-weight: 700; line-height: 1.25; }
+.fo-qn { color: var(--muted); font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.fo-zones { flex: 1; display: flex; gap: 8px; padding: 8px; min-height: 0; }
+.zone {
+  flex: 1; border-radius: 22px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; position: relative; overflow: hidden; touch-action: none; transition: filter .15s, box-shadow .15s;
+  filter: brightness(.55);
+}
+.zone[data-side="0"] { background: var(--a-dark); }
+.zone[data-side="1"] { background: var(--b-dark); }
+.zone.armed { filter: brightness(1); }
+.zone.armed[data-side="0"] { background: var(--a); }
+.zone.armed[data-side="1"] { background: var(--b); }
+.zone.winner { filter: brightness(1.1); box-shadow: 0 0 0 8px var(--gold) inset, 0 0 60px rgba(251,191,36,.6); }
+.zone.winner[data-side="0"] { background: var(--a); }
+.zone.winner[data-side="1"] { background: var(--b); }
+.zone.early { animation: earlyflash .45s ease-out; }
+@keyframes earlyflash { 0% { background: var(--red); filter: brightness(1.2); } 100% { } }
+.zone-name { font-size: 28px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; opacity: .95; }
+.zone-big { font-size: min(18vw, 120px); font-weight: 900; letter-spacing: .05em; line-height: 1; }
+.zone-sub { font-size: 20px; font-weight: 700; min-height: 26px; color: var(--gold); }
+.zone-guess { position: absolute; bottom: 14px; left: 14px; right: 14px; text-align: center; }
+.guesscard { display: inline-block; background: rgba(0,0,0,.45); border-radius: 14px; padding: 10px 18px; font-size: 22px; font-weight: 700; }
+.guesscard.hit { color: #fff; }
+.guesscard.hit b { color: var(--gold); }
+.guesscard.miss { color: #fecaca; }
+.fo-bottom { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px 14px; background: var(--panel); min-height: 74px; flex-wrap: wrap; }
+.fo-msg { font-size: 22px; font-weight: 700; text-align: center; }
+.fo-msg.big { font-size: 28px; color: var(--gold); }
+
+/* ---------- GM overlay ---------- */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(2,6,23,.96); z-index: 50; padding: 20px; flex-direction: column; align-items: center; justify-content: center; }
+.overlay.active { display: flex; }
+.gm-box { background: var(--panel); border-radius: 18px; padding: 18px; width: min(720px, 100%); max-height: 100%; overflow: auto; }
+.gm-box h3 { margin: 0 0 4px; color: var(--red); font-size: 14px; text-transform: uppercase; letter-spacing: .08em; }
+.gm-box .who { font-size: 22px; font-weight: 800; margin-bottom: 12px; }
+.gm-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.gm-list button { display: flex; justify-content: space-between; align-items: center; text-align: left; min-height: 54px; }
+.gm-list button .p { color: var(--gold); margin-left: 10px; }
+.gm-list button.done { background: #14532d; opacity: .7; }
+.gm-actions { display: flex; gap: 10px; }
+.gm-actions button { flex: 1; }
+
+/* ---------- Board ---------- */
+#board { background: var(--bg); }
+.b-top { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--panel); }
+.b-qwrap { flex: 1; min-width: 0; }
+.b-qn { color: var(--muted); font-size: 13px; font-weight: 600; }
+.b-q { font-size: 22px; font-weight: 700; line-height: 1.2; }
+.b-q.hidden { color: var(--muted); font-style: italic; font-weight: 500; }
+.b-main { flex: 1; display: flex; gap: 10px; padding: 10px; min-height: 0; }
+.grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(4, 1fr); grid-auto-flow: column; gap: 10px; min-height: 0; }
+.slot { perspective: 900px; min-height: 0; }
+.slot .inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; -webkit-transform-style: preserve-3d; transition: transform .65s cubic-bezier(.4,0,.2,1); }
+.slot.flipped .inner { transform: rotateY(180deg); }
+.grid.noanim .inner { transition: none !important; }
+.face {
+  position: absolute; inset: 0; border-radius: 14px; display: flex; align-items: center; justify-content: center;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden; font-weight: 800; overflow: hidden;
+}
+.front { background: linear-gradient(180deg, #1d4ed8, #1e3a8a); border: 3px solid #3b82f6; font-size: min(7vh, 48px); }
+.front span { background: #0b1220; border-radius: 50%; width: 1.6em; height: 1.6em; display: flex; align-items: center; justify-content: center; }
+.back { background: linear-gradient(180deg, #fde68a, #f59e0b); color: #1c1917; transform: rotateY(180deg); padding: 0 14px; justify-content: space-between; gap: 10px; }
+.back .ans { font-size: min(4.2vh, 30px); text-transform: uppercase; line-height: 1.1; flex: 1; }
+.back .pts { font-size: min(5vh, 36px); background: #1c1917; color: var(--gold); border-radius: 10px; padding: 4px 12px; min-width: 2.2em; text-align: center; }
+.slot.empty .inner { transform: none !important; }
+.slot.empty .front { background: #111827; border-color: #1f2937; }
+.slot.empty .front span { display: none; }
+/* GM view: show every answer flat, mark revealed ones */
+.grid.gm .inner { transform: none !important; transition: none !important; }
+.grid.gm .front { display: none; }
+.grid.gm .back { transform: none; background: #334155; color: var(--text); border: 3px solid #475569; }
+.grid.gm .back .pts { background: #0b1220; }
+.grid.gm .slot.revealed .back { background: #166534; border-color: var(--green); }
+.grid.gm .slot.revealed .back .ans::before { content: "✓ "; color: var(--green); }
+.grid.gm .slot.empty .back { display: none; }
+.grid.gm .slot.empty .front { display: flex; }
+.b-side { width: 190px; display: flex; flex-direction: column; gap: 10px; }
+.pot { background: var(--panel); border-radius: 14px; text-align: center; padding: 10px; }
+.pot .lbl { color: var(--muted); font-size: 13px; font-weight: 700; letter-spacing: .1em; }
+.pot .num { font-size: 56px; font-weight: 900; color: var(--gold); line-height: 1.05; }
+.strikes { display: flex; gap: 6px; justify-content: center; }
+.sbox { width: 52px; height: 52px; border-radius: 10px; background: var(--panel); display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 900; color: transparent; }
+.sbox.on { background: var(--red); color: #fff; }
+.btn-strike { background: var(--red); font-size: 22px; min-height: 64px; }
+.b-side .spacer { flex: 1; }
+.b-bottom { display: flex; gap: 10px; padding: 0 10px 10px; }
+.team { flex: 1; border-radius: 14px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; position: relative; }
+.team.t0 { background: var(--a-dark); }
+.team.t1 { background: var(--b-dark); }
+.team.control { box-shadow: 0 0 0 4px var(--gold); }
+.team .tname { font-size: 20px; font-weight: 800; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.team .tname .ctl { display: none; font-size: 12px; color: var(--gold); margin-left: 8px; letter-spacing: .08em; }
+.team.control .tname .ctl { display: inline; }
+.team .tscore { font-size: 40px; font-weight: 900; padding: 0 10px; border-radius: 10px; background: rgba(0,0,0,.3); min-width: 90px; text-align: center; }
+.team .give { background: rgba(0,0,0,.35); }
+#strikeFlash {
+  display: none; position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.6);
+  align-items: center; justify-content: center; pointer-events: none;
+}
+#strikeFlash.active { display: flex; animation: strikepop .8s ease-out; }
+#strikeFlash span { font-size: 45vh; font-weight: 900; color: var(--red); text-shadow: 0 0 40px rgba(239,68,68,.8); line-height: 1; }
+@keyframes strikepop { 0% { opacity: 0; transform: scale(.6); } 15% { opacity: 1; transform: scale(1.05); } 80% { opacity: 1; transform: scale(1); } 100% { opacity: 0; } }
+#gmToggle {
+  position: fixed; right: 12px; top: 12px; z-index: 40; display: none; min-height: 40px; padding: 6px 12px; font-size: 13px;
+  background: #334155; border: 2px solid #475569; border-radius: 20px;
+}
+#gmToggle.on { background: var(--red); border-color: #fca5a5; }
+.gm-banner { display: none; background: var(--red); color: #fff; text-align: center; font-weight: 800; padding: 6px; letter-spacing: .08em; font-size: 13px; }
+body.gm .gm-banner { display: block; }
+.b-top .qbtn { min-width: 48px; }
+
+@media (max-width: 700px) {
+  .b-main { flex-direction: column; }
+  .b-side { width: auto; flex-direction: row; flex-wrap: wrap; }
+  .b-side .pot { flex: 1; }
+  .team .tscore { font-size: 28px; min-width: 60px; }
+  .team .tname { font-size: 16px; }
+  .team .tname .ctl { display: none !important; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ================= SETUP ================= -->
+<section id="setup" class="screen active">
+  <div class="setup-wrap">
+    <h1>Family Feud</h1>
+
+    <div class="card">
+      <h2>1. Questions</h2>
+      <div class="row">
+        <label class="filebtn">Upload spreadsheet (.xlsx / .csv)<input type="file" id="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
+        <div id="fileInfo" class="hint" style="margin:0"></div>
+      </div>
+      <div class="hint">One row per question, best answer first. Columns:
+        <code>Question | Answer 1 | Points 1 | Answer 2 | Points 2 | … | Answer 8 | Points 8</code>.
+        A header row is fine. Bad rows are skipped and listed below. The last sheet you load is remembered on this iPad.</div>
+    </div>
+
+    <div class="card teams">
+      <label class="ta"><span>Team A</span><input type="text" id="nameA" maxlength="20" placeholder="Team A"></label>
+      <label class="tb"><span>Team B</span><input type="text" id="nameB" maxlength="20" placeholder="Team B"></label>
+    </div>
+
+    <div class="card row">
+      <button id="btnStart" class="primary" disabled>Start game</button>
+      <button id="btnContinue" style="display:none">Continue game</button>
+      <span id="startHint" class="hint" style="margin:0"></span>
+    </div>
+
+    <div id="flags"></div>
+    <div id="qlist"></div>
+  </div>
+</section>
+
+<!-- ================= FACE-OFF ================= -->
+<section id="faceoff" class="screen">
+  <div class="fo-top">
+    <div style="flex:1;min-width:0">
+      <div class="fo-qn" id="foQn"></div>
+      <div class="fo-q" id="foQ"></div>
+    </div>
+    <button id="btnArm" class="primary">Arm buzzers</button>
+    <button id="btnSkipFo" class="small">Skip face-off</button>
+    <button id="btnFoSetup" class="small">Setup</button>
+  </div>
+  <div class="fo-zones">
+    <div class="zone" data-side="0"><div class="zone-name"></div><div class="zone-big">BUZZ</div><div class="zone-sub"></div><div class="zone-guess"></div></div>
+    <div class="zone" data-side="1"><div class="zone-name"></div><div class="zone-big">BUZZ</div><div class="zone-sub"></div><div class="zone-guess"></div></div>
+  </div>
+  <div class="fo-bottom" id="foBottom"></div>
+</section>
+
+<!-- ================= BOARD ================= -->
+<section id="board" class="screen">
+  <div class="gm-banner">GM VIEW — TURN THE IPAD AWAY FROM THE PLAYERS</div>
+  <header class="b-top">
+    <button id="btnPrev" class="qbtn">◀</button>
+    <div class="b-qwrap"><div class="b-qn" id="bQn"></div><div class="b-q" id="bQ"></div></div>
+    <button id="btnEye" class="qbtn" title="Hide / show question">Hide</button>
+    <button id="btnNext" class="qbtn">▶</button>
+    <div style="width:96px"></div>
+  </header>
+  <main class="b-main">
+    <div id="grid" class="grid"></div>
+    <aside class="b-side">
+      <div class="pot"><div class="lbl">POT</div><div id="pot" class="num">0</div></div>
+      <div class="strikes"><span class="sbox">✕</span><span class="sbox">✕</span><span class="sbox">✕</span></div>
+      <button id="btnStrike" class="btn-strike">STRIKE</button>
+      <div class="spacer"></div>
+      <button id="btnRevealAll" class="small">Reveal all</button>
+      <button id="btnBoardSetup" class="small">Setup</button>
+    </aside>
+  </main>
+  <footer class="b-bottom">
+    <div class="team t0"><div class="tname"><span class="nm"></span><span class="ctl">▶ CONTROL</span></div><div class="tscore" data-t="0">0</div><button class="give" data-give="0">Give pot</button></div>
+    <div class="team t1"><div class="tname"><span class="nm"></span><span class="ctl">▶ CONTROL</span></div><div class="tscore" data-t="1">0</div><button class="give" data-give="1">Give pot</button></div>
+  </footer>
+</section>
+
+<div id="gmPanel" class="overlay"><div class="gm-box">
+  <h3>GM only — turn the iPad toward you</h3>
+  <div class="who" id="gmWho"></div>
+  <div class="gm-list" id="gmList"></div>
+  <div class="gm-actions"><button id="gmMiss" class="danger">Not on board</button><button id="gmCancel">Cancel</button></div>
+</div></div>
+
+<div id="strikeFlash"><span>✕</span></div>
+<button id="gmToggle">GM view</button>
+
+</div>
+
+<script src="xlsx.mini.min.js"></script>
+<script>
+(function () {
+'use strict';
+const MAX = 8;
+const KEY = 'family-feud-state-v1';
+const $ = (id) => document.getElementById(id);
+
+// ---------- state ----------
+function defaultState() {
+  return {
+    questions: [], flags: [], sheetName: '',
+    teams: [{ name: 'Team A', score: 0 }, { name: 'Team B', score: 0 }],
+    qi: 0, phase: 'setup', round: null, gmView: false, qHidden: false,
+  };
+}
+function newRound() {
+  return {
+    revealed: Array(MAX).fill(false), pot: 0, strikes: 0, control: null,
+    // face-off: stage idle | armed | buzzed | second | decided | redo
+    fo: { stage: 'idle', winner: null, lead: null, guesses: [null, null] },
+  };
+}
+let S = defaultState();
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage full or blocked */ } }
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    S = Object.assign(defaultState(), s);
+    if (S.round && S.round.fo && S.round.fo.stage === 'armed') S.round.fo.stage = 'idle';
+    if (S.phase !== 'setup' && (!S.questions.length || !S.round)) S.phase = 'setup';
+  } catch (e) { S = defaultState(); }
+}
+const cur = () => S.questions[S.qi];
+const tname = (t) => S.teams[t].name || (t === 0 ? 'Team A' : 'Team B');
+function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+// ---------- spreadsheet parsing ----------
+function parseRows(rows) {
+  const questions = [], flags = [];
+  let seenHeader = false;
+  rows.forEach((r, idx) => {
+    const rowNo = idx + 1;
+    const cells = (r || []).map((c) => (c == null ? '' : String(c).trim()));
+    if (cells.every((c) => c === '')) return;
+    const q = cells[0] || '';
+    // header row: first non-empty row whose first cell says "question" and has no numeric points
+    if (!seenHeader && !questions.length && /question/i.test(q) && !isNum(cells[2])) { seenHeader = true; return; }
+    seenHeader = true;
+    const problems = [], warns = [], answers = [];
+    if (!q) problems.push('no question text');
+    for (let k = 0; k < MAX; k++) {
+      const a = cells[1 + 2 * k] || '', p = cells[2 + 2 * k] || '';
+      if (!a && !p) continue;
+      if (!a) { problems.push('answer ' + (k + 1) + ' is blank but has points'); continue; }
+      if (!isNum(p)) { problems.push('answer ' + (k + 1) + ' ("' + a + '") has bad points "' + p + '"'); continue; }
+      answers.push({ text: a, points: Math.round(Number(p)) });
+    }
+    if (!answers.length && q) problems.push('no answers');
+    if (problems.length) { flags.push({ row: rowNo, level: 'bad', msg: 'Row ' + rowNo + ' skipped: ' + problems.join('; ') }); return; }
+    for (let i = 1; i < answers.length; i++) if (answers[i].points > answers[i - 1].points) { warns.push('points are not in rank order'); break; }
+    if (warns.length) flags.push({ row: rowNo, level: 'warn', msg: 'Row ' + rowNo + ' loaded, but ' + warns.join('; ') });
+    questions.push({ q, answers, row: rowNo });
+  });
+  return { questions, flags };
+}
+function isNum(s) { return s !== '' && s != null && isFinite(Number(s)); }
+
+function handleFile(file) {
+  const info = $('fileInfo');
+  info.textContent = 'Reading ' + file.name + '…';
+  const isCsv = /\.csv$/i.test(file.name) || /csv/.test(file.type);
+  const reader = new FileReader();
+  reader.onerror = () => { info.textContent = 'Could not read file.'; };
+  reader.onload = () => {
+    try {
+      const wb = isCsv ? XLSX.read(reader.result, { type: 'string' }) : XLSX.read(reader.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
+      const res = parseRows(rows);
+      S.questions = res.questions; S.flags = res.flags; S.sheetName = file.name;
+      S.phase = 'setup'; S.round = null; S.qi = 0;
+      save(); renderSetup();
+    } catch (e) {
+      info.textContent = 'Could not parse file: ' + (e && e.message ? e.message : e);
+    }
+  };
+  if (isCsv) reader.readAsText(file); else reader.readAsArrayBuffer(file);
+}
+
+// ---------- setup screen ----------
+function renderSetup() {
+  $('nameA').value = S.teams[0].name; $('nameB').value = S.teams[1].name;
+  $('fileInfo').textContent = S.questions.length ? (S.sheetName + ' — ' + S.questions.length + ' question' + (S.questions.length === 1 ? '' : 's') + ' loaded') : 'No spreadsheet loaded yet.';
+  $('btnStart').disabled = !S.questions.length;
+  $('btnContinue').style.display = (S.phase !== 'setup' && S.round) ? '' : 'none';
+  $('startHint').textContent = S.phase !== 'setup' && S.round ? ('A game is in progress: ' + tname(0) + ' ' + S.teams[0].score + ' – ' + tname(1) + ' ' + S.teams[1].score + ', question ' + (S.qi + 1) + '. Start game resets scores.') : '';
+  $('flags').innerHTML = S.flags.map((f) => '<div class="flag ' + f.level + '">' + esc(f.msg) + '</div>').join('');
+  if (S.questions.length) {
+    $('qlist').innerHTML = '<div class="card"><h2>Loaded questions (check for mistakes)</h2><table class="qs"><tr><th>#</th><th>Question</th><th>Answers (points)</th></tr>' +
+      S.questions.map((q, i) => '<tr><td class="n">' + (i + 1) + '</td><td>' + esc(q.q) + '</td><td class="ans">' +
+        q.answers.map((a) => '<b>' + esc(a.text) + '</b> (' + a.points + ')').join(', ') + '</td></tr>').join('') + '</table></div>';
+  } else $('qlist').innerHTML = '';
+}
+function readNames() {
+  S.teams[0].name = $('nameA').value.trim() || 'Team A';
+  S.teams[1].name = $('nameB').value.trim() || 'Team B';
+}
+function startGame() {
+  readNames();
+  S.teams[0].score = 0; S.teams[1].score = 0;
+  S.qi = 0; S.round = newRound(); S.qHidden = false; S.gmView = false;
+  S.phase = 'faceoff'; save(); render();
+}
+function continueGame() { readNames(); save(); render(); }
+function gotoSetup() { S.phase = 'setup'; S.gmView = false; save(); render(); }
+
+// ---------- face-off ----------
+let buzzT1 = 0, leadTimer = null;
+function arm() {
+  const fo = S.round.fo;
+  fo.stage = 'armed'; fo.winner = null; fo.lead = null;
+  renderFaceoff();
+}
+function zoneTap(side, ts) {
+  const fo = S.round.fo;
+  if (fo.stage === 'armed') {
+    fo.stage = 'buzzed'; fo.winner = side; buzzT1 = ts; fo.lead = null;
+    clearTimeout(leadTimer);
+    leadTimer = setTimeout(() => { if (fo.lead == null) { fo.lead = -1; save(); renderFaceoff(); } }, 2500);
+    save(); renderFaceoff();
+  } else if (fo.stage === 'buzzed' && side !== fo.winner && fo.lead == null) {
+    fo.lead = Math.max(1, Math.round(ts - buzzT1));
+    clearTimeout(leadTimer); save(); renderFaceoff();
+  } else if (fo.stage === 'idle' || fo.stage === 'redo') {
+    const z = zoneEl(side);
+    z.classList.remove('early'); void z.offsetWidth; z.classList.add('early');
+  }
+}
+function zoneEl(side) { return document.querySelector('.zone[data-side="' + side + '"]'); }
+function guessingTeam() {
+  const fo = S.round.fo;
+  if (fo.stage === 'buzzed') return fo.winner;
+  if (fo.stage === 'second') return 1 - fo.winner;
+  return null;
+}
+function gmPick(team, idx) {
+  const fo = S.round.fo, q = cur();
+  fo.guesses[team] = idx;
+  if (idx >= 0) reveal(idx);
+  const other = 1 - fo.winner;
+  if (team === fo.winner) {
+    if (idx === 0) decide(fo.winner);
+    else fo.stage = 'second';
+  } else {
+    const a = fo.guesses[fo.winner], b = idx;
+    if (a < 0 && b < 0) fo.stage = 'redo';
+    else if (b < 0) decide(fo.winner);
+    else if (a < 0) decide(other);
+    else {
+      const pa = q.answers[a].points, pb = q.answers[b].points;
+      if (pb > pa) decide(other);
+      else if (pa > pb) decide(fo.winner);
+      else decide(a < b ? fo.winner : other); // same points: higher-ranked answer wins
+    }
+  }
+  closeGm(); save(); renderFaceoff();
+}
+function decide(team) { S.round.fo.stage = 'decided'; S.round.control = team; }
+function redo() { S.round.fo = newRound().fo; save(); renderFaceoff(); }
+function playOrPass(pass) {
+  if (pass) S.round.control = 1 - S.round.control;
+  S.phase = 'board'; save(); render();
+}
+function skipFaceoff() { S.round.control = null; S.phase = 'board'; save(); render(); }
+
+function renderFaceoff() {
+  const q = cur(), fo = S.round.fo;
+  $('foQn').textContent = 'Question ' + (S.qi + 1) + ' of ' + S.questions.length;
+  $('foQ').textContent = q.q;
+  $('btnArm').disabled = !(fo.stage === 'idle' || fo.stage === 'redo');
+  $('btnArm').textContent = fo.stage === 'armed' ? 'Armed…' : 'Arm buzzers';
+  for (let s = 0; s < 2; s++) {
+    const z = zoneEl(s);
+    z.querySelector('.zone-name').textContent = tname(s);
+    z.classList.toggle('armed', fo.stage === 'armed');
+    z.classList.toggle('winner', fo.stage !== 'armed' && fo.stage !== 'idle' && fo.stage !== 'redo' && fo.winner === s);
+    let sub = '';
+    if (fo.winner === s && fo.stage !== 'armed' && fo.stage !== 'idle') {
+      sub = fo.lead == null ? 'FIRST!' : fo.lead < 0 ? 'FIRST! (no second tap)' : 'FIRST by ' + fo.lead + ' ms';
+    }
+    z.querySelector('.zone-sub').textContent = sub;
+    const g = fo.guesses[s], gd = z.querySelector('.zone-guess');
+    if (g == null || fo.stage === 'armed' || fo.stage === 'idle') gd.innerHTML = '';
+    else if (g < 0) gd.innerHTML = '<div class="guesscard miss">✗ Not on board</div>';
+    else gd.innerHTML = '<div class="guesscard hit">✓ ' + esc(q.answers[g].text) + ' · <b>' + q.answers[g].points + '</b></div>';
+  }
+  const b = $('foBottom');
+  const W = fo.winner == null ? '' : tname(fo.winner), O = fo.winner == null ? '' : tname(1 - fo.winner);
+  switch (fo.stage) {
+    case 'idle': b.innerHTML = '<div class="fo-msg">Read the question, then tap <b>Arm buzzers</b>.</div>'; break;
+    case 'armed': b.innerHTML = '<div class="fo-msg big">Buzzers armed — first touch wins!</div>'; break;
+    case 'buzzed': b.innerHTML = '<div class="fo-msg">' + esc(W) + ' guesses.</div><button class="primary" data-act="check">Check ' + esc(W) + '\'s answer</button>'; break;
+    case 'second': b.innerHTML = '<div class="fo-msg">' + esc(O) + ' guesses.</div><button class="primary" data-act="check">Check ' + esc(O) + '\'s answer</button>'; break;
+    case 'decided': {
+      const C = tname(S.round.control), N = tname(1 - S.round.control);
+      b.innerHTML = '<div class="fo-msg big">' + esc(C) + ' has control!</div><button class="primary" data-act="play">Play</button><button data-act="pass">Pass to ' + esc(N) + '</button>';
+      break;
+    }
+    case 'redo': b.innerHTML = '<div class="fo-msg">Both missed.</div><button class="primary" data-act="redo">Redo face-off</button>'; break;
+  }
+}
+function openGm() {
+  const team = guessingTeam(); if (team == null) return;
+  const q = cur();
+  $('gmWho').textContent = 'What did ' + tname(team) + ' say?';
+  $('gmList').innerHTML = q.answers.map((a, i) => '<button data-i="' + i + '" class="' + (S.round.revealed[i] ? 'done' : '') + '"' + (S.round.revealed[i] ? ' disabled' : '') + '><span>' + (i + 1) + '. ' + esc(a.text) + '</span><span class="p">' + a.points + '</span></button>').join('');
+  $('gmPanel').classList.add('active');
+}
+function closeGm() { $('gmPanel').classList.remove('active'); }
+
+// ---------- board ----------
+let builtFor = -1;
+let shown = Array(MAX).fill(false);   // which slots the PLAYERS have seen flipped (view-only)
+function reveal(i) {
+  const q = cur();
+  if (!q.answers[i] || S.round.revealed[i]) return false;
+  S.round.revealed[i] = true;
+  S.round.pot += q.answers[i].points;
+  save();
+  return true;
+}
+function revealAll() {
+  const q = cur();
+  q.answers.forEach((a, i) => { S.round.revealed[i] = true; });   // no points added: leftover answers don't count
+  save(); renderBoard();
+}
+function strike() {
+  if (S.round.strikes >= 3) return;
+  S.round.strikes++;
+  save(); renderBoard();
+  const f = $('strikeFlash');
+  f.classList.remove('active'); void f.offsetWidth; f.classList.add('active');
+  setTimeout(() => f.classList.remove('active'), 800);
+}
+function givePot(t) {
+  if (!S.round.pot) return;
+  S.teams[t].score += S.round.pot; S.round.pot = 0;
+  save(); renderBoard();
+}
+function editScore(t) {
+  const v = prompt('Score for ' + tname(t) + ':', S.teams[t].score);
+  if (v == null) return;
+  const n = Number(v);
+  if (!isFinite(n)) return;
+  S.teams[t].score = Math.round(n); save(); renderBoard();
+}
+function goQuestion(delta) {
+  const n = S.qi + delta;
+  if (n < 0 || n >= S.questions.length) return;
+  S.qi = n; S.round = newRound(); S.qHidden = false;
+  S.phase = 'faceoff'; save(); render();
+}
+function toggleQ() { S.qHidden = !S.qHidden; save(); renderBoard(); }
+function toggleGm() {
+  S.gmView = !S.gmView; save();
+  renderBoard();
+}
+function buildBoard() {
+  const q = cur(), g = $('grid');
+  g.innerHTML = '';
+  for (let i = 0; i < MAX; i++) {
+    const a = q.answers[i];
+    const el = document.createElement('div');
+    el.className = 'slot' + (a ? '' : ' empty');
+    el.dataset.i = i;
+    el.innerHTML = '<div class="inner"><div class="face front"><span>' + (i + 1) + '</span></div>' +
+      '<div class="face back"><span class="ans">' + (a ? esc(a.text) : '') + '</span><span class="pts">' + (a ? a.points : '') + '</span></div></div>';
+    g.appendChild(el);
+  }
+  builtFor = S.qi;
+  shown = S.round.revealed.slice();      // after a reload, no replay animation
+  g.classList.add('noanim');
+  g.querySelectorAll('.slot').forEach((el, i) => { el.classList.toggle('flipped', shown[i]); el.classList.toggle('revealed', S.round.revealed[i]); });
+  void g.offsetWidth; g.classList.remove('noanim');
+}
+function renderBoard() {
+  const q = cur(), r = S.round, g = $('grid');
+  if (builtFor !== S.qi || g.children.length !== MAX) buildBoard();
+  $('bQn').textContent = 'Question ' + (S.qi + 1) + ' of ' + S.questions.length;
+  $('bQ').textContent = S.qHidden ? '(question hidden)' : q.q;
+  $('bQ').classList.toggle('hidden', S.qHidden);
+  $('btnEye').textContent = S.qHidden ? 'Show' : 'Hide';
+  $('btnPrev').disabled = S.qi === 0; $('btnNext').disabled = S.qi >= S.questions.length - 1;
+  $('pot').textContent = r.pot;
+  document.querySelectorAll('.sbox').forEach((b, i) => b.classList.toggle('on', i < r.strikes));
+  $('btnStrike').disabled = r.strikes >= 3;
+  for (let t = 0; t < 2; t++) {
+    const el = document.querySelector('.team.t' + t);
+    el.querySelector('.nm').textContent = tname(t);
+    el.querySelector('.tscore').textContent = S.teams[t].score;
+    el.querySelector('.give').textContent = 'Give pot to ' + tname(t);
+    el.classList.toggle('control', r.control === t);
+  }
+  document.body.classList.toggle('gm', S.gmView);
+  $('gmToggle').classList.toggle('on', S.gmView);
+  $('gmToggle').textContent = S.gmView ? 'Player view' : 'GM view';
+  const slots = g.querySelectorAll('.slot');
+  slots.forEach((el, i) => el.classList.toggle('revealed', r.revealed[i]));
+  if (S.gmView) {
+    g.classList.add('gm');
+  } else {
+    // Leaving GM view (or normal play): snap known-flipped slots, then animate the ones players haven't seen.
+    if (g.classList.contains('gm')) {
+      g.classList.add('noanim'); g.classList.remove('gm');
+      void g.offsetWidth; g.classList.remove('noanim');
+    }
+    let k = 0;
+    slots.forEach((el, i) => {
+      if (r.revealed[i] && !shown[i]) {
+        shown[i] = true;
+        setTimeout(() => el.classList.add('flipped'), 120 + k * 450); k++;
+      }
+    });
+  }
+}
+
+// ---------- top-level render ----------
+function render() {
+  document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
+  $('gmToggle').style.display = S.phase === 'board' ? 'block' : 'none';
+  if (S.phase !== 'board') document.body.classList.remove('gm');
+  closeGm();
+  if (S.phase === 'setup') { $('setup').classList.add('active'); renderSetup(); }
+  else if (S.phase === 'faceoff') { $('faceoff').classList.add('active'); renderFaceoff(); }
+  else { $('board').classList.add('active'); renderBoard(); }
+}
+
+// ---------- events ----------
+$('file').addEventListener('change', (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); e.target.value = ''; });
+$('btnStart').addEventListener('click', startGame);
+$('btnContinue').addEventListener('click', continueGame);
+$('nameA').addEventListener('change', () => { readNames(); save(); });
+$('nameB').addEventListener('change', () => { readNames(); save(); });
+
+$('btnArm').addEventListener('click', arm);
+$('btnSkipFo').addEventListener('click', skipFaceoff);
+$('btnFoSetup').addEventListener('click', gotoSetup);
+document.querySelectorAll('.zone').forEach((z) => {
+  z.addEventListener('pointerdown', (e) => { zoneTap(Number(z.dataset.side), e.timeStamp); });
+  z.addEventListener('contextmenu', (e) => e.preventDefault());
+});
+$('foBottom').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  const act = b.dataset.act;
+  if (act === 'check') openGm();
+  else if (act === 'play') playOrPass(false);
+  else if (act === 'pass') playOrPass(true);
+  else if (act === 'redo') redo();
+});
+$('gmList').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b || b.disabled) return;
+  const team = guessingTeam(); if (team == null) return;
+  gmPick(team, Number(b.dataset.i));
+});
+$('gmMiss').addEventListener('click', () => { const t = guessingTeam(); if (t != null) gmPick(t, -1); });
+$('gmCancel').addEventListener('click', closeGm);
+
+$('grid').addEventListener('click', (e) => {
+  const el = e.target.closest('.slot'); if (!el || el.classList.contains('empty')) return;
+  const i = Number(el.dataset.i);
+  if (reveal(i)) renderBoard();
+});
+$('btnStrike').addEventListener('click', strike);
+$('btnRevealAll').addEventListener('click', revealAll);
+$('btnBoardSetup').addEventListener('click', gotoSetup);
+$('btnPrev').addEventListener('click', () => goQuestion(-1));
+$('btnNext').addEventListener('click', () => goQuestion(1));
+$('btnEye').addEventListener('click', toggleQ);
+$('gmToggle').addEventListener('click', toggleGm);
+document.querySelectorAll('.give').forEach((b) => b.addEventListener('click', () => givePot(Number(b.dataset.give))));
+document.querySelectorAll('.tscore').forEach((b) => b.addEventListener('click', () => editScore(Number(b.dataset.t))));
+
+// ---------- boot ----------
+load();
+render();
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+// exposed for testing
+window.__ff = { get state() { return S; }, parseRows };
+})();
+</script>
+</body>
+</html>
