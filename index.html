@@ -149,6 +149,12 @@ table.qs .tot.bad { color: var(--red); font-weight: 700; }
 .b-q { font-size: 22px; font-weight: 700; line-height: 1.2; }
 .b-q.hidden { color: var(--muted); font-style: italic; font-weight: 500; }
 .b-main { flex: 1; display: flex; gap: 10px; padding: 10px; min-height: 0; }
+.b-status { display: none; align-items: center; justify-content: center; gap: 14px; padding: 8px 12px; font-size: 20px; font-weight: 800; flex-wrap: wrap; }
+.b-status.steal { display: flex; background: #7f1d1d; color: #fff; }
+.b-status.over { display: flex; background: #713f12; color: var(--gold); }
+.b-status .sub { font-size: 14px; font-weight: 500; color: #fecaca; }
+.team.stealing { box-shadow: 0 0 0 4px var(--red); animation: stealpulse 1s infinite alternate; }
+@keyframes stealpulse { from { box-shadow: 0 0 0 4px var(--red); } to { box-shadow: 0 0 0 4px var(--red), 0 0 30px var(--red); } }
 .grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(4, 1fr); grid-auto-flow: column; gap: 10px; min-height: 0; }
 .slot { perspective: 900px; min-height: 0; }
 .slot .inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; -webkit-transform-style: preserve-3d; transition: transform .65s cubic-bezier(.4,0,.2,1); }
@@ -284,6 +290,7 @@ body.gm .gm-banner { display: block; }
     <button id="btnNext" class="qbtn">▶</button>
     <div style="width:96px"></div>
   </header>
+  <div id="bStatus" class="b-status"></div>
   <main class="b-main">
     <div id="grid" class="grid"></div>
     <aside class="b-side">
@@ -341,6 +348,8 @@ function defaultState() {
 function newRound() {
   return {
     revealed: Array(MAX).fill(false), pot: 0, strikes: 0, control: null,
+    steal: null,            // { team, result: null | 'hit' | 'miss' } once the playing team has 3 strikes
+    over: false, winner: null, msg: '',   // set once the pot has been awarded
     // face-off: stage idle | armed | buzzed | second | decided | redo
     fo: { stage: 'idle', winner: null, lead: null, guesses: [null, null] },
   };
@@ -652,12 +661,32 @@ function closeGm() { $('gmPanel').classList.remove('active'); }
 let builtFor = -1;
 let shown = Array(MAX).fill(false);   // which slots the PLAYERS have seen flipped (view-only)
 function reveal(i) {
-  const q = cur();
-  if (!q.answers[i] || S.round.revealed[i]) return false;
-  S.round.revealed[i] = true;
-  S.round.pot += q.answers[i].points;
+  const q = cur(), r = S.round;
+  if (!q.answers[i] || r.revealed[i]) return false;
+  r.revealed[i] = true;
+  if (!r.over) r.pot += q.answers[i].points;   // answers shown after the round is decided don't score
+  if (r.steal && !r.steal.result) {
+    r.steal.result = 'hit';
+    awardPot(r.steal.team, tname(r.steal.team) + ' stole the pot!');
+  } else if (S.phase === 'board' && !r.over && r.control != null && q.answers.every((a, k) => r.revealed[k])) {
+    awardPot(r.control, tname(r.control) + ' cleared the board!');
+  }
   save();
   return true;
+}
+function awardPot(t, msg) {
+  const r = S.round;
+  S.teams[t].score += r.pot;
+  r.msg = msg + (r.pot ? ' +' + r.pot : '');
+  r.pot = 0; r.over = true; r.winner = t;
+  if (r.steal && !r.steal.result) r.steal.result = 'miss';
+}
+function stealMissed() {
+  const r = S.round;
+  if (!r.steal || r.steal.result) return;
+  r.steal.result = 'miss';
+  awardPot(r.control, tname(r.control) + ' keeps the pot');
+  save(); renderBoard();
 }
 function revealAll() {
   const q = cur();
@@ -665,8 +694,10 @@ function revealAll() {
   save(); renderBoard();
 }
 function strike() {
-  if (S.round.strikes >= 3) return;
-  S.round.strikes++;
+  const r = S.round;
+  if (r.strikes >= 3 || r.over) return;
+  r.strikes++;
+  if (r.strikes === 3 && r.control != null && !r.steal) r.steal = { team: 1 - r.control, result: null };
   save(); renderBoard();
   const f = $('strikeFlash');
   f.classList.remove('active'); void f.offsetWidth; f.classList.add('active');
@@ -674,7 +705,7 @@ function strike() {
 }
 function givePot(t) {
   if (!S.round.pot) return;
-  S.teams[t].score += S.round.pot; S.round.pot = 0;
+  awardPot(t, tname(t) + ' gets the pot');
   save(); renderBoard();
 }
 function editScore(t) {
@@ -723,13 +754,22 @@ function renderBoard() {
   $('btnPrev').disabled = S.qi === 0; $('btnNext').disabled = S.qi >= S.questions.length - 1;
   $('pot').textContent = r.pot;
   document.querySelectorAll('.sbox').forEach((b, i) => b.classList.toggle('on', i < r.strikes));
-  $('btnStrike').disabled = r.strikes >= 3;
+  $('btnStrike').disabled = r.strikes >= 3 || r.over;
+  const st = $('bStatus'), stealing = r.steal && !r.steal.result;
+  if (stealing) {
+    st.className = 'b-status steal';
+    st.innerHTML = '<span>' + esc(tname(r.steal.team)) + ' can steal! One guess.</span><span class="sub">Tap the answer they give, or</span><button class="small" id="btnStealMiss">Steal missed</button>';
+  } else if (r.over) {
+    st.className = 'b-status over';
+    st.textContent = r.msg;
+  } else st.className = 'b-status';
   for (let t = 0; t < 2; t++) {
     const el = document.querySelector('.team.t' + t);
     el.querySelector('.nm').textContent = tname(t);
     el.querySelector('.tscore').textContent = S.teams[t].score;
     el.querySelector('.give').textContent = 'Give pot to ' + tname(t);
     el.classList.toggle('control', r.control === t);
+    el.classList.toggle('stealing', !!(stealing && r.steal.team === t));
   }
   document.body.classList.toggle('gm', S.gmView);
   $('gmToggle').classList.toggle('on', S.gmView);
@@ -815,6 +855,7 @@ $('grid').addEventListener('click', (e) => {
   if (reveal(i)) renderBoard();
 });
 $('btnStrike').addEventListener('click', strike);
+$('bStatus').addEventListener('click', (e) => { if (e.target.id === 'btnStealMiss') stealMissed(); });
 $('btnRevealAll').addEventListener('click', revealAll);
 $('btnBoardSetup').addEventListener('click', gotoSetup);
 $('btnPrev').addEventListener('click', () => goQuestion(-1));

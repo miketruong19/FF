@@ -54,7 +54,9 @@ Rows whose points total more than 100 are skipped. Rows not in descending order 
    Both revealed answers stay up and their points go in the pot. Both miss → **Redo face-off**.
    Then **Play** or **Pass**.
 3. **Board**: tap a slot to flip it (adds to pot). **Strike** flashes an X, max three.
-   **Give pot to …** moves the pot to a team. Tap a score to type a correction.
+   On the third strike the other team gets one guess to **steal**: tap the answer they give and the whole pot goes to them,
+   or tap **Steal missed** and the playing team keeps it. Clearing the board gives the pot to the playing team automatically.
+   **Give pot to …** is the manual override. Tap a score to type a correction.
    **Reveal all** flips the rest without adding points. ◀ ▶ moves to another question and resets pot and strikes.
 4. **GM view** (top-right pill) shows every answer with points and marks the revealed ones.
    Flips made there play as animations when you switch back to player view.
