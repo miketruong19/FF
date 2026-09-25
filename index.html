@@ -210,6 +210,14 @@ table.qs .tot.bad { color: var(--red); font-weight: 700; }
 #strikeFlash.active { display: flex; animation: strikepop .8s ease-out; }
 #strikeFlash span { font-size: 45vh; font-weight: 900; color: var(--red); text-shadow: 0 0 40px rgba(239,68,68,.8); line-height: 1; }
 @keyframes strikepop { 0% { opacity: 0; transform: scale(.6); } 15% { opacity: 1; transform: scale(1.05); } 80% { opacity: 1; transform: scale(1); } 100% { opacity: 0; } }
+#curtain {
+  display: none; position: fixed; inset: 0; z-index: 70; background: var(--bg);
+  flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; gap: 14px;
+}
+#curtain.active { display: flex; }
+#curtain .c-icon { font-size: 80px; line-height: 1; }
+#curtain .c-msg { font-size: 30px; font-weight: 800; max-width: 700px; line-height: 1.2; }
+#curtain .c-sub { font-size: 18px; color: var(--muted); font-weight: 600; }
 #gmToggle {
   position: fixed; right: 12px; top: 12px; z-index: 40; display: none; min-height: 40px; padding: 6px 12px; font-size: 13px;
   background: #334155; border: 2px solid #475569; border-radius: 20px;
@@ -328,6 +336,7 @@ body.gm .gm-banner { display: block; }
   <div class="gm-actions"><button id="gmMiss" class="danger">Not on board</button><button id="gmCancel">Cancel</button></div>
 </div></div>
 
+<div id="curtain"><div class="c-icon">🔄</div><div class="c-msg" id="curtainMsg"></div><div class="c-sub">Tap anywhere when it's safe</div></div>
 <div id="strikeFlash"><span>✕</span></div>
 <button id="gmToggle">GM view</button>
 
@@ -608,6 +617,7 @@ function gmPick(team, idx) {
     }
   }
   closeGm(); save(); renderFaceoff();
+  curtain(MSG_TO_PLAYERS, null);
 }
 function decide(team) { S.round.fo.stage = 'decided'; S.round.control = team; }
 function redo() { S.round.fo = newRound().fo; save(); renderFaceoff(); }
@@ -653,7 +663,16 @@ function renderFaceoff() {
     case 'redo': b.innerHTML = '<div class="fo-msg">Both missed.</div><button class="primary" data-act="redo">Redo face-off</button>'; break;
   }
 }
+const MSG_TO_GM = 'Turn the iPad toward you, GM. Nobody else should see the screen.';
+const MSG_TO_PLAYERS = 'Turn the iPad back toward the players.';
+let curtainNext = null;
+function curtain(msg, next) { $('curtainMsg').textContent = msg; curtainNext = next; $('curtain').classList.add('active'); }
+function hideCurtain() { $('curtain').classList.remove('active'); curtainNext = null; }
 function openGm() {
+  if (guessingTeam() == null) return;
+  curtain(MSG_TO_GM, showGmPanel);
+}
+function showGmPanel() {
   const team = guessingTeam(); if (team == null) return;
   const q = cur();
   $('gmWho').textContent = 'What did ' + tname(team) + ' say?';
@@ -730,8 +749,8 @@ function goQuestion(delta) {
 }
 function toggleQ() { S.qHidden = !S.qHidden; save(); renderBoard(); }
 function toggleGm() {
-  S.gmView = !S.gmView; save();
-  renderBoard();
+  if (S.gmView) curtain(MSG_TO_PLAYERS, () => { S.gmView = false; save(); renderBoard(); });
+  else curtain(MSG_TO_GM, () => { S.gmView = true; save(); renderBoard(); });
 }
 function buildBoard() {
   const q = cur(), g = $('grid');
@@ -809,7 +828,7 @@ function render() {
   const onBoard = S.phase === 'board' && !S.setupOpen;
   $('gmToggle').style.display = onBoard ? 'block' : 'none';
   if (!onBoard) document.body.classList.remove('gm');
-  closeGm();
+  closeGm(); hideCurtain();
   if (S.phase === 'setup' || S.setupOpen) { $('setup').classList.add('active'); renderSetup(); }
   else if (S.phase === 'faceoff') { $('faceoff').classList.add('active'); renderFaceoff(); }
   else { $('board').classList.add('active'); renderBoard(); }
@@ -856,7 +875,8 @@ $('gmList').addEventListener('click', (e) => {
   gmPick(team, Number(b.dataset.i));
 });
 $('gmMiss').addEventListener('click', () => { const t = guessingTeam(); if (t != null) gmPick(t, -1); });
-$('gmCancel').addEventListener('click', closeGm);
+$('gmCancel').addEventListener('click', () => { closeGm(); curtain(MSG_TO_PLAYERS, null); });
+$('curtain').addEventListener('click', () => { const n = curtainNext; hideCurtain(); if (n) n(); });
 
 $('grid').addEventListener('click', (e) => {
   const el = e.target.closest('.slot'); if (!el || el.classList.contains('empty')) return;

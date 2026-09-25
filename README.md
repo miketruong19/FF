@@ -72,4 +72,5 @@ Rows whose points total more than 100 are skipped. Rows not in descending order 
    The setting carries over to the next question until you change it.
    **Reveal all** flips the rest without adding points. ◀ ▶ moves to another question and resets pot and strikes.
 4. **GM view** (top-right pill) shows every answer with points and marks the revealed ones.
-   Flips made there play as animations when you switch back to player view.
+   Switching either way first shows a blank "turn the iPad" cover screen; tap it once the iPad is facing the right people.
+   Flips made in GM view play as animations when you switch back to player view. The face-off **Check answer** step uses the same cover.
