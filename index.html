@@ -161,6 +161,15 @@ table.qs .tot.bad { color: var(--red); font-weight: 700; }
 .b-main { flex: 1; display: flex; gap: 10px; padding: 10px; min-height: 0; }
 .b-status { display: none; align-items: center; justify-content: center; gap: 14px; padding: 8px 12px; font-size: 20px; font-weight: 800; flex-wrap: wrap; }
 .b-status.steal { display: flex; background: #7f1d1d; color: #fff; }
+.b-status.fo { display: flex; background: #1e3a8a; color: #fff; }
+.b-status.play { display: flex; background: var(--panel); }
+.b-status.survey { display: flex; background: #0b1220; color: var(--gold); }
+.b-status .big { font-size: 30px; animation: waitpulse .6s ease-in-out infinite alternate; }
+.b-status button { min-height: 44px; }
+.team.guessing { box-shadow: 0 0 0 4px var(--gold); animation: guesspulse .8s infinite alternate; }
+@keyframes guesspulse { from { box-shadow: 0 0 0 4px var(--gold); } to { box-shadow: 0 0 0 4px var(--gold), 0 0 34px var(--gold); } }
+.slot.pop { z-index: 2; animation: slotpop 1s ease-out; }
+@keyframes slotpop { 0% { transform: scale(1); } 45% { transform: scale(1.08); filter: drop-shadow(0 0 22px rgba(251,191,36,.95)); } 100% { transform: scale(1); } }
 .b-status.over { display: flex; background: #713f12; color: var(--gold); }
 .b-status .sub { font-size: 14px; font-weight: 500; color: #fecaca; }
 .team.stealing { box-shadow: 0 0 0 4px var(--red); animation: stealpulse 1s infinite alternate; }
@@ -290,6 +299,7 @@ body.gm .gm-banner { display: block; }
     <div class="card"><h2>3. Play</h2><div class="row">
       <button id="btnStart" class="primary" disabled>Start game</button>
       <button id="btnContinue" style="display:none">Continue game</button>
+      <button class="btn-sound small" id="btnSound">🔊 Sound on</button>
       <span id="startHint" class="hint" style="margin:0"></span>
     </div></div>
 
@@ -336,6 +346,7 @@ body.gm .gm-banner { display: block; }
       <button id="btnStrike" class="btn-strike">STRIKE</button>
       <div class="spacer"></div>
       <button id="btnRevealAll" class="small">Reveal all</button>
+      <button class="btn-sound small" id="btnSoundB">🔊 Sound on</button>
       <button id="btnBoardSetup" class="small">Setup</button>
     </aside>
   </main>
@@ -369,11 +380,12 @@ body.gm .gm-banner { display: block; }
 <div id="gmPanel" class="overlay"><div class="gm-box">
   <h3>GM only — turn the iPad toward you</h3>
   <div class="who" id="gmWho"></div>
+  <div class="hint" id="gmCtx" style="margin:-8px 0 12px"></div>
   <div class="gm-list" id="gmList"></div>
   <div class="gm-actions"><button id="gmMiss" class="danger">Not on board</button><button id="gmCancel">Cancel</button></div>
 </div></div>
 
-<div id="curtain"><div class="c-icon" id="curtainIcon">🔄</div><div class="c-msg" id="curtainMsg"></div><div class="c-sub">Tap anywhere when it's safe</div></div>
+<div id="curtain"><div class="c-icon" id="curtainIcon">🔄</div><div class="c-msg" id="curtainMsg"></div><div class="c-sub" id="curtainSub">Tap anywhere when it's safe</div></div>
 <div id="strikeFlash"><span>✕</span></div>
 <button id="gmToggle">GM view</button>
 
@@ -392,7 +404,7 @@ function defaultState() {
   return {
     questions: [], flags: [], sheetName: '',
     teams: [{ name: 'Team A', score: 0 }, { name: 'Team B', score: 0 }],
-    qi: 0, phase: 'setup', round: null, gmView: false, qHidden: false, setupOpen: false,
+    qi: 0, phase: 'setup', round: null, gmView: false, qHidden: false, setupOpen: false, sound: true,
   };
 }
 function qMult(i) { const q = S.questions[i]; return q && q.mult ? q.mult : 1; }
@@ -402,8 +414,9 @@ function newRound(mult) {
     mult: mult || 1,        // 1 = normal, 2 = double round, 3 = triple round; pot holds raw survey points
     steal: null,            // { team, result: null | 'hit' | 'miss' } once the playing team has 3 strikes
     over: false, winner: null, msg: '',   // set once the pot has been awarded
-    // face-off: stage idle | armed | buzzed | second | decided | redo
+    // face-off: stage idle | armed | buzzed | second | decided | redo; foDone once Play/Pass is chosen
     fo: { stage: 'idle', winner: null, lead: null, guesses: [null, null] },
+    foDone: false,
   };
 }
 let S = defaultState();
@@ -415,6 +428,8 @@ function load() {
     const s = JSON.parse(raw);
     S = Object.assign(defaultState(), s);
     if (S.round && S.round.fo && S.round.fo.stage === 'armed') S.round.fo.stage = 'idle';
+    if (S.round && S.round.foDone === undefined) S.round.foDone = S.phase === 'board';   // saves from older versions
+    if (S.phase === 'faceoff' && S.round && S.round.fo.stage !== 'idle') S.phase = 'board';
     if (S.phase !== 'setup' && (!S.questions.length || !S.round)) S.phase = 'setup';
   } catch (e) { S = defaultState(); }
 }
@@ -503,7 +518,10 @@ function questionsChanged(editedIndex) {
   // keep the game state sane if questions change mid-game
   if (S.qi >= S.questions.length) S.qi = Math.max(0, S.questions.length - 1);
   if (!S.questions.length) { S.phase = 'setup'; S.round = null; }
-  else if (S.round && (editedIndex == null || editedIndex === S.qi)) S.round = newRound(qMult(S.qi));
+  else if (S.round && (editedIndex == null || editedIndex === S.qi)) {
+    S.round = newRound(qMult(S.qi));
+    if (S.phase === 'board') S.phase = 'faceoff';   // the question changed, so its face-off starts over
+  }
   builtFor = -1;
   save(); renderSetup();
 }
@@ -612,8 +630,73 @@ function startGame() {
 function continueGame() { readNames(); S.setupOpen = false; save(); render(); }
 function gotoSetup() { curtain(MSG_TO_GM, () => { S.setupOpen = true; S.gmView = false; save(); render(); }); }
 
-// ---------- face-off ----------
-let buzzT1 = 0, leadTimer = null;
+// ---------- sound ----------
+// All sounds are generated in code (Web Audio), so they work offline and need no sound files.
+const Sound = (() => {
+  let ac = null, unlocked = false;
+  function ctx() {
+    if (!S.sound) return null;
+    try {
+      if (!ac) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; ac = new C(); }
+      if (ac.state === 'suspended') ac.resume();
+      return ac;
+    } catch (e) { return null; }
+  }
+  function unlock() {
+    // iPad Safari only allows sound after a tap; also ask to play even with the silent switch on.
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+    const c = ctx(); if (!c || unlocked) return;
+    try { const buf = c.createBuffer(1, 1, 22050), src = c.createBufferSource(); src.buffer = buf; src.connect(c.destination); src.start(0); unlocked = true; } catch (e) {}
+  }
+  function tone(c, o) {
+    const t0 = c.currentTime + (o.t || 0), d = o.d || .3, v = o.v || .2;
+    const osc = c.createOscillator(), g = c.createGain();
+    osc.type = o.type || 'sine';
+    osc.frequency.setValueAtTime(o.f, t0);
+    if (o.f2) osc.frequency.exponentialRampToValueAtTime(o.f2, t0 + d);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(v, t0 + (o.a || .005));
+    if (o.hold) g.gain.setValueAtTime(v, t0 + d - .06);   // flat buzzer, then cut
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+    osc.connect(g); g.connect(c.destination);
+    osc.start(t0); osc.stop(t0 + d + .05);
+  }
+  function hit(c, t, d, v) {
+    const len = Math.max(1, Math.floor(c.sampleRate * d)), buf = c.createBuffer(1, len, c.sampleRate), data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    const src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(), t0 = c.currentTime + t;
+    f.type = 'highpass'; f.frequency.value = 1200;
+    src.buffer = buf; g.gain.setValueAtTime(v, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+    src.connect(f); f.connect(g); g.connect(c.destination); src.start(t0);
+  }
+  const safe = (fn) => (...args) => { const c = ctx(); if (!c) return; try { fn(c, ...args); } catch (e) { if (window.__ffFast) console.error('sound: ' + e.message); } };
+  return {
+    unlock,
+    buzz: safe((c, team) => { const f = team === 0 ? 587 : 784; tone(c, { f, d: .4, type: 'square', v: .09, hold: true }); tone(c, { f: f * 2, d: .4, v: .05, hold: true }); }),
+    early: safe((c) => tone(c, { f: 140, d: .12, type: 'square', v: .06 })),
+    ding: safe((c, top) => {
+      const bell = (f, t) => { tone(c, { f, t, d: 1.4, v: .22 }); tone(c, { f: f * 2, t, d: .7, v: .07 }); tone(c, { f: f * 3, t, d: .35, v: .03 }); };
+      bell(1318.5, 0); if (top) bell(1760, .16);
+    }),
+    strike: safe((c) => { tone(c, { f: 118, d: .9, type: 'sawtooth', v: .16, hold: true }); tone(c, { f: 124, d: .9, type: 'square', v: .08, hold: true }); }),
+    roll: safe((c, secs) => { for (let t = 0; t < secs; t += .045) hit(c, t, .05, .03 + .22 * (t / secs)); }),
+    fanfare: safe((c) => { [523, 659, 784, 1047].forEach((f, i) => tone(c, { f, t: i * .12, d: i === 3 ? .7 : .22, type: 'triangle', v: .16 })); }),
+    win: safe((c) => {
+      const n = [523, 659, 784, 1047, 784, 1047, 1319];
+      n.forEach((f, i) => tone(c, { f, t: i * .14, d: i === n.length - 1 ? 1.2 : .25, type: 'triangle', v: .16 }));
+    }),
+  };
+})();
+function toggleSound() { S.sound = !S.sound; save(); if (S.sound) { Sound.unlock(); Sound.ding(false); } renderSoundBtns(); }
+function renderSoundBtns() { document.querySelectorAll('.btn-sound').forEach((b) => { b.textContent = S.sound ? '🔊 Sound on' : '🔇 Sound off'; }); }
+
+// ---------- face-off (buzz screen) ----------
+// The buzz screen only decides who answers first. After the buzz the game moves to the board,
+// where the face-off guesses are checked and revealed.
+const fast = () => !!window.__ffFast;                 // tests only: shorter pauses
+const BUZZ_HOLD_MS = () => (fast() ? 400 : 1600);     // how long the buzz winner stays lit
+const SUSPENSE_MS = () => (fast() ? 80 : 1400);       // "Survey says..." pause
+let buzzT1 = 0, toBoardTimer = null;
 function arm() {
   const fo = S.round.fo;
   fo.stage = 'armed'; fo.winner = null; fo.lead = null;
@@ -623,28 +706,97 @@ function zoneTap(side, ts) {
   const fo = S.round.fo;
   if (fo.stage === 'armed') {
     fo.stage = 'buzzed'; fo.winner = side; buzzT1 = ts; fo.lead = null;
-    clearTimeout(leadTimer);
-    leadTimer = setTimeout(() => { if (fo.lead == null) { fo.lead = -1; save(); renderFaceoff(); } }, 2500);
+    Sound.buzz(side);
     save(); renderFaceoff();
+    const round = S.round;
+    clearTimeout(toBoardTimer);
+    toBoardTimer = setTimeout(() => {
+      if (S.round === round && S.phase === 'faceoff' && round.fo.stage === 'buzzed') { S.phase = 'board'; save(); render(); }
+    }, BUZZ_HOLD_MS());
   } else if (fo.stage === 'buzzed' && side !== fo.winner && fo.lead == null) {
     fo.lead = Math.max(1, Math.round(ts - buzzT1));
-    clearTimeout(leadTimer); save(); renderFaceoff();
-  } else if (fo.stage === 'idle' || fo.stage === 'redo') {
+    save(); renderFaceoff();
+  } else if (fo.stage === 'idle') {
     const z = zoneEl(side);
     z.classList.remove('early'); void z.offsetWidth; z.classList.add('early');
+    Sound.early();
   }
 }
 function zoneEl(side) { return document.querySelector('.zone[data-side="' + side + '"]'); }
-function guessingTeam() {
-  const fo = S.round.fo;
-  if (fo.stage === 'buzzed') return fo.winner;
-  if (fo.stage === 'second') return 1 - fo.winner;
+function renderFaceoff() {
+  const q = cur(), fo = S.round.fo;
+  const m = S.round.mult || 1;
+  $('foQn').innerHTML = 'Question ' + (S.qi + 1) + ' of ' + S.questions.length + (m > 1 ? ' <span class="mbadge" style="font-size:14px;padding:2px 10px">' + (m === 2 ? 'DOUBLE' : 'TRIPLE') + ' POINTS</span>' : '');
+  $('foQ').textContent = q.q;
+  $('btnArm').disabled = fo.stage !== 'idle';
+  $('btnArm').textContent = fo.stage === 'armed' ? 'Armed…' : 'Arm buzzers';
+  for (let s = 0; s < 2; s++) {
+    const z = zoneEl(s);
+    z.querySelector('.zone-name').textContent = tname(s);
+    z.classList.toggle('armed', fo.stage === 'armed');
+    z.classList.toggle('winner', fo.stage === 'buzzed' && fo.winner === s);
+    z.querySelector('.zone-sub').textContent = fo.stage === 'buzzed' && fo.winner === s ? (fo.lead > 0 ? 'FIRST by ' + fo.lead + ' ms' : 'FIRST!') : '';
+    z.querySelector('.zone-guess').innerHTML = '';
+  }
+  const b = $('foBottom');
+  if (fo.stage === 'idle') b.innerHTML = '<div class="fo-msg">Read the question, then tap <b>Arm buzzers</b>.</div>';
+  else if (fo.stage === 'armed') b.innerHTML = '<div class="fo-msg big">Buzzers armed — first touch wins!</div>';
+  else b.innerHTML = '<div class="fo-msg big">' + esc(tname(fo.winner)) + ' buzzed first! Going to the board…</div>';
+}
+function skipFaceoff() { S.round.control = null; S.round.foDone = true; S.phase = 'board'; save(); render(); }
+
+// ---------- checking an answer (face-off, play and steal) ----------
+// GM taps Check answer -> red cover -> picks what the player said (or X) -> green cover -> one tap plays it out.
+function guessContext() {
+  const r = S.round; if (!r || r.over) return null;
+  if (!r.foDone) {
+    const fo = r.fo;
+    if (fo.stage === 'buzzed') return { kind: 'fo', team: fo.winner };
+    if (fo.stage === 'second') return { kind: 'fo', team: 1 - fo.winner };
+    return null;
+  }
+  if (r.steal && !r.steal.result) return { kind: 'steal', team: r.steal.team };
+  if (r.strikes < 3) return { kind: 'play', team: r.control };
   return null;
 }
-function gmPick(team, idx) {
+let pendingCtx = null;
+function openCheck() {
+  const c = guessContext(); if (!c) return;
+  if (S.gmView) showGmPanel(c); else curtain(MSG_TO_GM, () => showGmPanel(c));
+}
+function showGmPanel(c) {
+  pendingCtx = c;
+  const q = cur();
+  $('gmWho').textContent = c.team != null ? 'What did ' + tname(c.team) + ' say?' : 'What did they say?';
+  $('gmCtx').textContent = c.kind === 'fo' ? 'Face-off' : c.kind === 'steal' ? 'Steal: one guess' : 'Strikes so far: ' + S.round.strikes + ' of 3';
+  $('gmMiss').textContent = c.kind === 'fo' ? '✗ Not on board' : c.kind === 'steal' ? '✗ Steal missed' : '✗ Strike';
+  $('gmList').innerHTML = q.answers.map((a, i) => '<button data-i="' + i + '" class="' + (S.round.revealed[i] ? 'done' : '') + '"' + (S.round.revealed[i] ? ' disabled' : '') + '><span>' + (i + 1) + '. ' + esc(a.text) + '</span><span class="p">' + a.points + '</span></button>').join('');
+  $('gmPanel').classList.add('active');
+}
+function closeGm() { $('gmPanel').classList.remove('active'); }
+function gmChoose(idx) {
+  const c = pendingCtx; if (!c) return;
+  pendingCtx = null; closeGm();
+  curtain(MSG_TO_PLAYERS, () => playOut(c, idx), 'Tap to reveal');
+}
+let busy = false;
+function playOut(c, idx) {
+  const round = S.round;
+  S.gmView = false; busy = true; save(); renderBoard();
+  Sound.roll(SUSPENSE_MS() / 1000);
+  setTimeout(() => {
+    busy = false;
+    if (S.round !== round || S.phase !== 'board') return;
+    if (c.kind === 'fo') foPick(c.team, idx);
+    else if (c.kind === 'steal') { if (idx >= 0) reveal(idx); else stealMissed(); }
+    else { if (idx >= 0) reveal(idx); else strike(); }
+    save(); renderBoard();
+  }, SUSPENSE_MS());
+}
+function foPick(team, idx) {
   const fo = S.round.fo, q = cur();
   fo.guesses[team] = idx;
-  if (idx >= 0) reveal(idx);
+  if (idx >= 0) reveal(idx); else queueX();
   const other = 1 - fo.winner;
   if (team === fo.winner) {
     if (idx === 0) decide(fo.winner);
@@ -661,100 +813,33 @@ function gmPick(team, idx) {
       else decide(a < b ? fo.winner : other); // same points: higher-ranked answer wins
     }
   }
-  closeGm(); save(); renderFaceoff();
-  curtain(MSG_TO_PLAYERS, () => surveySays(team));
 }
-// "Survey says..." pause: after the GM turns the iPad back, hold the answer for a beat before showing it.
-const SUSPENSE_MS = 1500;
-let suspense = null, suspenseTimer = null;
-function surveySays(team) {
-  suspense = team; renderFaceoff();
-  clearTimeout(suspenseTimer);
-  suspenseTimer = setTimeout(() => {
-    suspense = null;
-    if (S.phase !== 'faceoff' || !S.round) return;
-    renderFaceoff();
-    if (S.round.fo.guesses[team] != null && S.round.fo.guesses[team] < 0) flashX();
-  }, SUSPENSE_MS);
+function decide(team) { S.round.fo.stage = 'decided'; S.round.control = team; celebrate = true; }
+function redo() { S.round.fo = newRound().fo; S.phase = 'faceoff'; save(); render(); }
+function playOrPass(pass) {
+  if (pass) S.round.control = 1 - S.round.control;
+  S.round.foDone = true; save(); renderBoard();
 }
 function flashX() {
   const f = $('strikeFlash');
   f.classList.remove('active'); void f.offsetWidth; f.classList.add('active');
   setTimeout(() => f.classList.remove('active'), 800);
+  Sound.strike();
 }
-function decide(team) { S.round.fo.stage = 'decided'; S.round.control = team; }
-function redo() { S.round.fo = newRound().fo; save(); renderFaceoff(); }
-function playOrPass(pass) {
-  if (pass) S.round.control = 1 - S.round.control;
-  S.phase = 'board'; save(); render();
-}
-function skipFaceoff() { S.round.control = null; S.phase = 'board'; save(); render(); }
-
-function renderFaceoff() {
-  const q = cur(), fo = S.round.fo;
-  const m = S.round.mult || 1;
-  $('foQn').innerHTML = 'Question ' + (S.qi + 1) + ' of ' + S.questions.length + (m > 1 ? ' <span class="mbadge" style="font-size:14px;padding:2px 10px">' + (m === 2 ? 'DOUBLE' : 'TRIPLE') + ' POINTS</span>' : '');
-  $('foQ').textContent = q.q;
-  $('btnArm').disabled = !(fo.stage === 'idle' || fo.stage === 'redo');
-  $('btnArm').textContent = fo.stage === 'armed' ? 'Armed…' : 'Arm buzzers';
-  for (let s = 0; s < 2; s++) {
-    const z = zoneEl(s);
-    z.querySelector('.zone-name').textContent = tname(s);
-    z.classList.toggle('armed', fo.stage === 'armed');
-    const lit = suspense != null ? suspense === s
-      : fo.stage === 'decided' ? S.round.control === s : (fo.stage === 'buzzed' || fo.stage === 'second') && fo.winner === s;
-    z.classList.toggle('winner', lit);
-    z.classList.toggle('has-guess', fo.guesses[s] != null && fo.stage !== 'armed' && fo.stage !== 'idle');
-    let sub = '';
-    if (fo.winner === s && fo.stage !== 'armed' && fo.stage !== 'idle') {
-      sub = fo.lead == null ? 'FIRST!' : fo.lead < 0 ? 'FIRST! (no second tap)' : 'FIRST by ' + fo.lead + ' ms';
-    }
-    z.querySelector('.zone-sub').textContent = sub;
-    const g = fo.guesses[s], gd = z.querySelector('.zone-guess');
-    if (suspense === s) gd.innerHTML = '<div class="guesscard wait">Survey says…</div>';
-    else if (g == null || fo.stage === 'armed' || fo.stage === 'idle') gd.innerHTML = '';
-    else if (g < 0) gd.innerHTML = '<div class="guesscard miss">✗ Not on board</div>';
-    else gd.innerHTML = '<div class="guesscard hit">✓ ' + esc(q.answers[g].text) + ' · <b>' + q.answers[g].points + '</b></div>';
-  }
-  const b = $('foBottom');
-  const W = fo.winner == null ? '' : tname(fo.winner), O = fo.winner == null ? '' : tname(1 - fo.winner);
-  if (suspense != null) { b.innerHTML = '<div class="fo-msg big">Survey says…</div>'; return; }
-  switch (fo.stage) {
-    case 'idle': b.innerHTML = '<div class="fo-msg">Read the question, then tap <b>Arm buzzers</b>.</div>'; break;
-    case 'armed': b.innerHTML = '<div class="fo-msg big">Buzzers armed — first touch wins!</div>'; break;
-    case 'buzzed': b.innerHTML = '<div class="fo-msg">' + esc(W) + ' guesses.</div><button class="primary" data-act="check">Check answer</button>'; break;
-    case 'second': b.innerHTML = '<div class="fo-msg">' + esc(O) + ' guesses.</div><button class="primary" data-act="check">Check answer</button>'; break;
-    case 'decided': {
-      const C = tname(S.round.control), N = tname(1 - S.round.control);
-      b.innerHTML = '<div class="fo-msg big">' + esc(C) + ' has control!</div><button class="primary" data-act="play">Play</button><button data-act="pass">Pass to ' + esc(N) + '</button>';
-      break;
-    }
-    case 'redo': b.innerHTML = '<div class="fo-msg">Both missed.</div><button class="primary" data-act="redo">Redo face-off</button>'; break;
-  }
-}
+let pendingX = 0, celebrate = false;   // effects waiting for the players' view
+function queueX() { pendingX++; }
 const MSG_TO_GM = 'Turn the iPad toward you, GM. Nobody else should see the screen.';
 const MSG_TO_PLAYERS = 'Turn the iPad back toward the players.';
 let curtainNext = null;
-function curtain(msg, next) {
+function curtain(msg, next, sub) {
   const toGm = msg === MSG_TO_GM;
   $('curtainMsg').textContent = msg;
+  $('curtainSub').textContent = sub || "Tap anywhere when it's safe";
   $('curtainIcon').textContent = toGm ? '🔒' : '👥';
   $('curtain').className = 'active ' + (toGm ? 'gm' : 'players');
   curtainNext = next;
 }
 function hideCurtain() { $('curtain').className = ''; curtainNext = null; }
-function openGm() {
-  if (guessingTeam() == null) return;
-  curtain(MSG_TO_GM, showGmPanel);
-}
-function showGmPanel() {
-  const team = guessingTeam(); if (team == null) return;
-  const q = cur();
-  $('gmWho').textContent = 'What did ' + tname(team) + ' say?';
-  $('gmList').innerHTML = q.answers.map((a, i) => '<button data-i="' + i + '" class="' + (S.round.revealed[i] ? 'done' : '') + '"' + (S.round.revealed[i] ? ' disabled' : '') + '><span>' + (i + 1) + '. ' + esc(a.text) + '</span><span class="p">' + a.points + '</span></button>').join('');
-  $('gmPanel').classList.add('active');
-}
-function closeGm() { $('gmPanel').classList.remove('active'); }
 
 // ---------- board ----------
 let builtFor = -1;
@@ -767,7 +852,7 @@ function reveal(i) {
   if (r.steal && !r.steal.result) {
     r.steal.result = 'hit';
     awardPot(r.steal.team, tname(r.steal.team) + ' stole the pot!');
-  } else if (S.phase === 'board' && !r.over && r.control != null && q.answers.every((a, k) => r.revealed[k])) {
+  } else if (S.phase === 'board' && r.foDone && !r.over && r.control != null && q.answers.every((a, k) => r.revealed[k])) {
     awardPot(r.control, tname(r.control) + ' cleared the board!');
   }
   save();
@@ -779,13 +864,14 @@ function awardPot(t, msg) {
   const r = S.round, v = potValue();
   S.teams[t].score += v;
   r.msg = msg + (v ? ' +' + v : '');
-  r.pot = 0; r.over = true; r.winner = t;
+  r.pot = 0; r.over = true; r.winner = t; celebrate = true;
   if (r.steal && !r.steal.result) r.steal.result = 'miss';
 }
 function stealMissed() {
   const r = S.round;
   if (!r.steal || r.steal.result) return;
   r.steal.result = 'miss';
+  queueX();
   awardPot(r.control, tname(r.control) + ' keeps the pot');
   save(); renderBoard();
 }
@@ -796,14 +882,14 @@ function revealAll() {
 }
 function strike() {
   const r = S.round;
-  if (r.strikes >= 3 || r.over) return;
+  if (r.strikes >= 3 || r.over || !r.foDone) return;
   r.strikes++;
   if (r.strikes === 3 && r.control != null && !r.steal) r.steal = { team: 1 - r.control, result: null };
+  queueX();
   save(); renderBoard();
-  flashX();
 }
 function givePot(t) {
-  if (!S.round.pot) return;
+  if (!S.round.pot || !S.round.foDone) return;
   awardPot(t, tname(t) + ' gets the pot');
   save(); renderBoard();
 }
@@ -814,7 +900,7 @@ function editScore(t) {
   if (!isFinite(n)) return;
   S.teams[t].score = Math.round(n); save(); renderBoard();
 }
-function finishGame() { S.phase = 'end'; S.gmView = false; save(); render(); }
+function finishGame() { S.phase = 'end'; S.gmView = false; save(); render(); Sound.win(); }
 function playAgain() {
   S.teams[0].score = 0; S.teams[1].score = 0;
   S.qi = 0; S.round = newRound(qMult(0)); S.qHidden = false; S.gmView = false;
@@ -855,6 +941,7 @@ function buildBoard() {
     g.appendChild(el);
   }
   builtFor = S.qi;
+  pendingX = 0; celebrate = false;
   shown = S.round.revealed.slice();      // after a reload, no replay animation
   g.classList.add('noanim');
   g.querySelectorAll('.slot').forEach((el, i) => { el.classList.toggle('flipped', shown[i]); el.classList.toggle('revealed', S.round.revealed[i]); });
@@ -875,16 +962,44 @@ function renderBoard() {
   $('potLbl').textContent = (r.mult || 1) > 1 ? 'POT ×' + r.mult : 'POT';
   document.querySelectorAll('.mult button').forEach((b) => { b.classList.toggle('on', Number(b.dataset.mult) === (r.mult || 1)); b.disabled = r.over; });
   document.querySelectorAll('.sbox').forEach((b, i) => b.classList.toggle('on', i < r.strikes));
-  $('btnStrike').disabled = r.strikes >= 3 || r.over;
+  $('btnStrike').disabled = r.strikes >= 3 || r.over || !r.foDone;
+  $('btnRevealAll').disabled = !r.foDone && !r.over;
+  document.querySelectorAll('.give').forEach((b) => { b.disabled = !r.foDone; });
   const st = $('bStatus'), stealing = r.steal && !r.steal.result;
-  if (stealing) {
+  const checkBtn = '<button class="primary" data-act="check">Check answer</button>';
+  let guessing = null;
+  if (busy) {
+    st.className = 'b-status survey';
+    st.innerHTML = '<span class="big">Survey says…</span>';
+  } else if (!r.foDone) {
+    const fo = r.fo, W = fo.winner != null ? tname(fo.winner) : '', O = fo.winner != null ? tname(1 - fo.winner) : '';
+    st.className = 'b-status fo';
+    if (fo.stage === 'buzzed') {
+      guessing = fo.winner;
+      st.innerHTML = '<span>⚡ ' + esc(W) + ' buzzed first' + (fo.lead > 0 ? ' by ' + fo.lead + ' ms' : '') + '. What is the answer?</span>' + checkBtn;
+    } else if (fo.stage === 'second') {
+      guessing = 1 - fo.winner;
+      const g = fo.guesses[fo.winner];
+      st.innerHTML = '<span>' + (g < 0 ? esc(W) + ' missed. ' + esc(O) + ', your turn!' : esc(O) + ', beat ' + esc(q.answers[g].text) + ' (' + q.answers[g].points + ')!') + '</span>' + checkBtn;
+    } else if (fo.stage === 'decided') {
+      st.innerHTML = '<span>' + esc(tname(r.control)) + ' has control!</span><button class="primary" data-act="play">Play</button><button data-act="pass">Pass to ' + esc(tname(1 - r.control)) + '</button>';
+    } else if (fo.stage === 'redo') {
+      st.innerHTML = '<span>Both missed!</span><button class="primary" data-act="redo">Redo face-off</button>';
+    } else st.innerHTML = '<span>Face-off</span>';
+  } else if (stealing) {
+    guessing = r.steal.team;
     st.className = 'b-status steal';
-    st.innerHTML = '<span>' + esc(tname(r.steal.team)) + ' can steal! One guess.</span><span class="sub">Tap the answer they give, or</span><button class="small" id="btnStealMiss">Steal missed</button>';
+    st.innerHTML = '<span>' + esc(tname(r.steal.team)) + ' can steal! One guess.</span>' + checkBtn + '<button class="small" id="btnStealMiss" data-act="stealmiss">Steal missed</button>';
   } else if (r.over) {
     st.className = 'b-status over';
     const lastQ = S.qi >= S.questions.length - 1;
-    st.innerHTML = '<span>' + esc(r.msg) + '</span><button class="small primary" id="btnBannerNext">' + (lastQ ? 'Finish game' : 'Next question ▶') + '</button>';
-  } else st.className = 'b-status';
+    st.innerHTML = '<span>' + esc(r.msg) + '</span><button class="small primary" id="btnBannerNext" data-act="next">' + (lastQ ? 'Finish game' : 'Next question ▶') + '</button>';
+  } else {
+    guessing = r.control;
+    st.className = 'b-status play';
+    if (r.strikes < 3) st.innerHTML = '<span>' + (r.control != null ? esc(tname(r.control)) + ' is playing' : 'Playing') + '</span>' + checkBtn;
+    else st.innerHTML = '<span>3 strikes. Give the pot to a team, or</span><button class="small" id="btnBannerNext" data-act="next">' + (S.qi >= S.questions.length - 1 ? 'Finish game' : 'Next question ▶') + '</button>';
+  }
   for (let t = 0; t < 2; t++) {
     const el = document.querySelector('.team.t' + t);
     el.querySelector('.nm').textContent = tname(t);
@@ -892,6 +1007,7 @@ function renderBoard() {
     el.querySelector('.give').textContent = 'Give pot to ' + tname(t);
     el.classList.toggle('control', r.control === t);
     el.classList.toggle('stealing', !!(stealing && r.steal.team === t));
+    el.classList.toggle('guessing', !r.foDone && guessing === t);
   }
   document.body.classList.toggle('gm', S.gmView);
   $('gmToggle').classList.toggle('on', S.gmView);
@@ -910,9 +1026,20 @@ function renderBoard() {
     slots.forEach((el, i) => {
       if (r.revealed[i] && !shown[i]) {
         shown[i] = true;
-        setTimeout(() => el.classList.add('flipped'), 120 + k * 450); k++;
+        setTimeout(() => {
+          el.classList.add('flipped');
+          el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+          Sound.ding(i === 0);
+        }, 120 + k * 450);
+        k++;
       }
     });
+    let t = k ? 120 + k * 450 + 250 : 0;
+    if (pendingX > 0) {
+      for (let j = 0; j < pendingX; j++) setTimeout(flashX, t + j * 950);
+      t += pendingX * 950; pendingX = 0;
+    }
+    if (celebrate) { celebrate = false; setTimeout(() => Sound.fanfare(), t + 150); }
   }
 }
 
@@ -922,7 +1049,7 @@ function render() {
   const onBoard = S.phase === 'board' && !S.setupOpen;
   $('gmToggle').style.display = onBoard ? 'block' : 'none';
   if (!onBoard) document.body.classList.remove('gm');
-  closeGm(); hideCurtain();
+  closeGm(); hideCurtain(); renderSoundBtns();
   if (S.phase === 'setup' || S.setupOpen) { $('setup').classList.add('active'); renderSetup(); }
   else if (S.phase === 'faceoff') { $('faceoff').classList.add('active'); renderFaceoff(); }
   else if (S.phase === 'end') { $('end').classList.add('active'); renderEnd(); }
@@ -957,31 +1084,34 @@ document.querySelectorAll('.zone').forEach((z) => {
   z.addEventListener('pointerdown', (e) => { zoneTap(Number(z.dataset.side), e.timeStamp); });
   z.addEventListener('contextmenu', (e) => e.preventDefault());
 });
-$('foBottom').addEventListener('click', (e) => {
-  const b = e.target.closest('button'); if (!b) return;
-  const act = b.dataset.act;
-  if (act === 'check') openGm();
-  else if (act === 'play') playOrPass(false);
-  else if (act === 'pass') playOrPass(true);
-  else if (act === 'redo') redo();
-});
 $('gmList').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b || b.disabled) return;
-  const team = guessingTeam(); if (team == null) return;
-  gmPick(team, Number(b.dataset.i));
+  gmChoose(Number(b.dataset.i));
 });
-$('gmMiss').addEventListener('click', () => { const t = guessingTeam(); if (t != null) gmPick(t, -1); });
-$('gmCancel').addEventListener('click', () => { closeGm(); curtain(MSG_TO_PLAYERS, null); });
+$('gmMiss').addEventListener('click', () => gmChoose(-1));
+$('gmCancel').addEventListener('click', () => { pendingCtx = null; closeGm(); if (S.gmView) return; curtain(MSG_TO_PLAYERS, null); });
+document.querySelectorAll('.btn-sound').forEach((b) => b.addEventListener('click', toggleSound));
+document.addEventListener('pointerdown', () => Sound.unlock(), true);
 $('curtain').addEventListener('click', () => { const n = curtainNext; hideCurtain(); if (n) n(); });
 
 $('grid').addEventListener('click', (e) => {
   const el = e.target.closest('.slot'); if (!el || el.classList.contains('empty')) return;
+  if (!S.round.foDone || busy) return;   // face-off answers go through Check answer
   const i = Number(el.dataset.i);
   if (reveal(i)) renderBoard();
 });
 $('btnStrike').addEventListener('click', strike);
 document.querySelectorAll('.mult button').forEach((b) => b.addEventListener('click', () => setMult(Number(b.dataset.mult))));
-$('bStatus').addEventListener('click', (e) => { if (e.target.id === 'btnStealMiss') stealMissed(); else if (e.target.id === 'btnBannerNext') goQuestion(1); });
+$('bStatus').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  const act = b.dataset.act;
+  if (act === 'check') openCheck();
+  else if (act === 'play') playOrPass(false);
+  else if (act === 'pass') playOrPass(true);
+  else if (act === 'redo') redo();
+  else if (act === 'stealmiss') stealMissed();
+  else if (act === 'next') goQuestion(1);
+});
 $('btnRevealAll').addEventListener('click', revealAll);
 $('btnBoardSetup').addEventListener('click', gotoSetup);
 $('btnPrev').addEventListener('click', () => goQuestion(-1));
@@ -1001,7 +1131,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 // exposed for testing
-window.__ff = { get state() { return S; }, parseRows };
+window.__ff = { get state() { return S; }, parseRows, Sound };
 })();
 </script>
 </body>

@@ -59,23 +59,19 @@ Rows whose points total more than 100 are skipped. Rows not in descending order 
 ## How a round goes
 
 1. **Setup**: add questions or upload a sheet, name the teams, check the list, Start game.
-   The **Setup** button on the other screens brings you back here; **Continue game** resumes where you were.
-2. **Face-off**: GM reads the question, taps **Arm buzzers**. Each team slaps their half of the screen.
-   First touch wins and shows its lead in milliseconds. Taps before arming flash red and do nothing.
-   GM taps **Check answer**, turns the iPad, picks what the player said (or **Not on board**).
-   The #1 answer wins control at once; otherwise the other team gets a guess and the higher answer wins.
-   After the GM picks, a short "Survey says…" pause builds suspense before the answer shows.
-   Both revealed answers stay up and their points go in the pot. Both miss → **Redo face-off**.
-   Then **Play** or **Pass**.
-3. **Board**: tap a slot to flip it (adds to pot). **Strike** flashes an X, max three.
-   On the third strike the other team gets one guess to **steal**: tap the answer they give and the whole pot goes to them,
-   or tap **Steal missed** and the playing team keeps it. Clearing the board gives the pot to the playing team automatically.
+   The **Setup** button on other screens goes behind the red cover (the list shows answers); **Continue game** resumes.
+2. **Buzz**: GM reads the question and taps **Arm buzzers**. Each team slaps their half of the screen.
+   First touch wins, shows its lead in milliseconds, and the app moves to the board by itself. Early taps flash red and do nothing.
+3. **Face-off on the board**: the banner says who buzzed. GM taps **Check answer**.
+4. **Checking any answer** (face-off, regular play, steal):
+   - A red cover says turn the iPad to the GM. Tap it, then pick what the player said, or ✗.
+   - A green cover says turn it back. One tap plays everything: "Survey says…" with a drum roll, then the flip with a ding, or the big X with a buzzer.
+   - In the face-off, the #1 answer wins control at once; otherwise the other team guesses and the higher answer wins. Both missing means **Redo face-off**.
+   - The board then says who has control, with **Play** or **Pass**.
+5. **Regular play**: keep using **Check answer**. ✗ counts as a strike. **Strike** and tapping a slot directly still work.
+   On the third strike the other team gets one guess to **steal**; the pot goes to whoever wins it. Clearing the board also wins the pot.
    **Give pot to …** is the manual override. Tap a score to type a correction.
-   Each question has its own **×1 / ×2 / ×3** setting, picked in the question editor or the sheet's Multiplier column.
-   Slots keep their survey numbers; the pot and the award are multiplied. The buttons under the pot override it for one round.
-   **Reveal all** flips the rest without adding points. ◀ ▶ moves to another question and resets pot and strikes.
-   On the last question the ▶ button becomes **Finish game**, which shows the final score and the winner.
-   **Play again** zeroes the scores and starts from question 1.
-4. **GM view** (top-right pill) shows every answer with points and marks the revealed ones.
-   Switching either way first shows a blank "turn the iPad" cover screen; tap it once the iPad is facing the right people.
-   Flips made in GM view play as animations when you switch back to player view. The face-off **Check answer** step uses the same cover.
+   Each question has its own **×1 / ×2 / ×3**, from the editor or the sheet. The buttons under the pot override it for one round.
+6. **Next question / Finish game** appears in the banner when the round is over. Finish shows the final score and winner; **Play again** starts over.
+7. **GM view** (top-right pill) shows every answer. Anything revealed or struck there plays with animation and sound when you switch back.
+8. **Sound**: game-show style sounds made in code (not the TV show's). Toggle with the Sound button. If the iPad is silent, check its volume and silent switch.
