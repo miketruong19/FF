@@ -215,6 +215,10 @@ table.qs .tot.bad { color: var(--red); font-weight: 700; }
   flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; gap: 14px;
 }
 #curtain.active { display: flex; }
+#curtain.gm { background: #7f1d1d; }
+#curtain.gm .c-sub { color: #fecaca; }
+#curtain.players { background: #14532d; }
+#curtain.players .c-sub { color: #bbf7d0; }
 #curtain .c-icon { font-size: 80px; line-height: 1; }
 #curtain .c-msg { font-size: 30px; font-weight: 800; max-width: 700px; line-height: 1.2; }
 #curtain .c-sub { font-size: 18px; color: var(--muted); font-weight: 600; }
@@ -336,7 +340,7 @@ body.gm .gm-banner { display: block; }
   <div class="gm-actions"><button id="gmMiss" class="danger">Not on board</button><button id="gmCancel">Cancel</button></div>
 </div></div>
 
-<div id="curtain"><div class="c-icon">🔄</div><div class="c-msg" id="curtainMsg"></div><div class="c-sub">Tap anywhere when it's safe</div></div>
+<div id="curtain"><div class="c-icon" id="curtainIcon">🔄</div><div class="c-msg" id="curtainMsg"></div><div class="c-sub">Tap anywhere when it's safe</div></div>
 <div id="strikeFlash"><span>✕</span></div>
 <button id="gmToggle">GM view</button>
 
@@ -666,8 +670,14 @@ function renderFaceoff() {
 const MSG_TO_GM = 'Turn the iPad toward you, GM. Nobody else should see the screen.';
 const MSG_TO_PLAYERS = 'Turn the iPad back toward the players.';
 let curtainNext = null;
-function curtain(msg, next) { $('curtainMsg').textContent = msg; curtainNext = next; $('curtain').classList.add('active'); }
-function hideCurtain() { $('curtain').classList.remove('active'); curtainNext = null; }
+function curtain(msg, next) {
+  const toGm = msg === MSG_TO_GM;
+  $('curtainMsg').textContent = msg;
+  $('curtainIcon').textContent = toGm ? '🔒' : '👥';
+  $('curtain').className = 'active ' + (toGm ? 'gm' : 'players');
+  curtainNext = next;
+}
+function hideCurtain() { $('curtain').className = ''; curtainNext = null; }
 function openGm() {
   if (guessingTeam() == null) return;
   curtain(MSG_TO_GM, showGmPanel);
