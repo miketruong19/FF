@@ -15,11 +15,22 @@ No server, no login. Once loaded it works offline.
 
 ## Put it on the iPad
 
-1. Host the folder somewhere with HTTPS. GitHub Pages is the easy option:
-   repo Settings → Pages → deploy from this branch, root folder.
-2. Open the URL in Safari on the iPad.
-3. Share → **Add to Home Screen**. Open it from there for full screen.
-4. From then on it opens offline. Your last spreadsheet, team names and scores are kept on the iPad.
+The app needs an HTTPS address. Two ways to get one:
+
+**A. GitHub Pages** (nothing to run, permanent link): repo Settings → Pages → deploy from this branch, root folder.
+
+**B. Your laptop + ngrok** (fixed address, laptop must be running):
+
+1. `brew install ngrok`, then `ngrok config add-authtoken YOUR_TOKEN` (token is on the ngrok dashboard).
+2. Claim your free static domain at https://dashboard.ngrok.com/domains.
+3. Open `serve.sh` and put that domain on the `NGROK_DOMAIN` line.
+4. Run `./serve.sh`. It starts a local server on port 8000 and the tunnel. Ctrl-C stops both.
+
+Then on the iPad:
+
+1. Open the address in Safari. With free ngrok, tap **Visit Site** on the warning page the first time.
+2. Share → **Add to Home Screen**. Open it from there for full screen.
+3. From then on it opens offline. Your questions, team names and scores are kept on the iPad.
 
 Opening `index.html` straight from the Files app does not work well in Safari, so use a URL.
 
