@@ -65,6 +65,8 @@ Rows whose points total more than 100 are skipped. Rows not in descending order 
 3. **Face-off on the board**: the banner says who buzzed. GM taps **Check answer**.
 4. **Checking any answer** (face-off, regular play, steal):
    - A red cover says turn the iPad to the GM. Tap it, then pick what the player said, or ✗.
+     Picking only highlights it; tap another to change your mind, then **Lock in**.
+   - Still wrong? The green cover has **↩ Change ruling**. Nothing counts until the reveal tap.
    - A green cover says turn it back. One tap plays everything: "Survey says…" with a drum roll, then the flip with a ding, or the big X with a buzzer.
    - In the face-off, the #1 answer wins control at once; otherwise the other team guesses and the higher answer wins. Both missing means **Redo face-off**.
    - The board then says who has control, with **Play** or **Pass**.

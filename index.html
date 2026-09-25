@@ -148,6 +148,12 @@ table.qs .tot.bad { color: var(--red); font-weight: 700; }
 .gm-list button { display: flex; justify-content: space-between; align-items: center; text-align: left; min-height: 54px; }
 .gm-list button .p { color: var(--gold); margin-left: 10px; }
 .gm-list button.done { background: #14532d; opacity: .7; }
+.gm-list button.sel { background: #3b3413; box-shadow: 0 0 0 4px var(--gold) inset; }
+#gmMiss { width: 100%; margin-bottom: 10px; }
+#gmMiss.sel { box-shadow: 0 0 0 4px #fff inset; filter: brightness(1.15); }
+#gmOk:disabled { opacity: .35; }
+#curtainBack { display: none; margin-top: 18px; background: rgba(0,0,0,.35); }
+#curtain.can-back #curtainBack { display: inline-block; }
 .gm-actions { display: flex; gap: 10px; }
 .gm-actions button { flex: 1; }
 
@@ -382,10 +388,11 @@ body.gm .gm-banner { display: block; }
   <div class="who" id="gmWho"></div>
   <div class="hint" id="gmCtx" style="margin:-8px 0 12px"></div>
   <div class="gm-list" id="gmList"></div>
-  <div class="gm-actions"><button id="gmMiss" class="danger">Not on board</button><button id="gmCancel">Cancel</button></div>
+  <button id="gmMiss" class="danger">Not on board</button>
+  <div class="gm-actions"><button id="gmOk" class="primary" disabled>Pick an answer</button><button id="gmCancel">Cancel</button></div>
 </div></div>
 
-<div id="curtain"><div class="c-icon" id="curtainIcon">🔄</div><div class="c-msg" id="curtainMsg"></div><div class="c-sub" id="curtainSub">Tap anywhere when it's safe</div></div>
+<div id="curtain"><div class="c-icon" id="curtainIcon">🔄</div><div class="c-msg" id="curtainMsg"></div><div class="c-sub" id="curtainSub">Tap anywhere when it's safe</div><button id="curtainBack" class="small">↩ Change ruling</button></div>
 <div id="strikeFlash"><span>✕</span></div>
 <button id="gmToggle">GM view</button>
 
@@ -759,25 +766,38 @@ function guessContext() {
   if (r.strikes < 3) return { kind: 'play', team: r.control };
   return null;
 }
-let pendingCtx = null;
+let pendingCtx = null, gmSel = null;
 function openCheck() {
   const c = guessContext(); if (!c) return;
   if (S.gmView) showGmPanel(c); else curtain(MSG_TO_GM, () => showGmPanel(c));
 }
-function showGmPanel(c) {
+function showGmPanel(c, sel) {
   pendingCtx = c;
   const q = cur();
   $('gmWho').textContent = c.team != null ? 'What did ' + tname(c.team) + ' say?' : 'What did they say?';
   $('gmCtx').textContent = c.kind === 'fo' ? 'Face-off' : c.kind === 'steal' ? 'Steal: one guess' : 'Strikes so far: ' + S.round.strikes + ' of 3';
   $('gmMiss').textContent = c.kind === 'fo' ? '✗ Not on board' : c.kind === 'steal' ? '✗ Steal missed' : '✗ Strike';
   $('gmList').innerHTML = q.answers.map((a, i) => '<button data-i="' + i + '" class="' + (S.round.revealed[i] ? 'done' : '') + '"' + (S.round.revealed[i] ? ' disabled' : '') + '><span>' + (i + 1) + '. ' + esc(a.text) + '</span><span class="p">' + a.points + '</span></button>').join('');
+  selectGm(sel == null ? null : sel);
   $('gmPanel').classList.add('active');
+}
+// Tapping an answer (or X) only selects it; nothing counts until Lock in.
+function selectGm(idx) {
+  gmSel = idx;
+  $('gmList').querySelectorAll('button').forEach((b) => b.classList.toggle('sel', Number(b.dataset.i) === idx));
+  $('gmMiss').classList.toggle('sel', idx === -1);
+  const ok = $('gmOk');
+  ok.disabled = idx == null;
+  if (idx == null) ok.textContent = 'Pick an answer';
+  else if (idx < 0) ok.textContent = 'Lock in: ' + $('gmMiss').textContent;
+  else { const a = cur().answers[idx]; ok.textContent = 'Lock in: ' + a.text + ' (' + a.points + ')'; }
 }
 function closeGm() { $('gmPanel').classList.remove('active'); }
 function gmChoose(idx) {
-  const c = pendingCtx; if (!c) return;
-  pendingCtx = null; closeGm();
-  curtain(MSG_TO_PLAYERS, () => playOut(c, idx), 'Tap to reveal');
+  const c = pendingCtx; if (!c || idx == null) return;
+  pendingCtx = null; gmSel = null; closeGm();
+  // Nothing is applied yet: the GM can still go back and change the ruling from the green screen.
+  curtain(MSG_TO_PLAYERS, () => playOut(c, idx), 'Tap to reveal', () => showGmPanel(c, idx));
 }
 let busy = false;
 function playOut(c, idx) {
@@ -831,15 +851,17 @@ function queueX() { pendingX++; }
 const MSG_TO_GM = 'Turn the iPad toward you, GM. Nobody else should see the screen.';
 const MSG_TO_PLAYERS = 'Turn the iPad back toward the players.';
 let curtainNext = null;
-function curtain(msg, next, sub) {
+let curtainBackFn = null;
+function curtain(msg, next, sub, back) {
   const toGm = msg === MSG_TO_GM;
+  curtainBackFn = back || null;
   $('curtainMsg').textContent = msg;
   $('curtainSub').textContent = sub || "Tap anywhere when it's safe";
   $('curtainIcon').textContent = toGm ? '🔒' : '👥';
-  $('curtain').className = 'active ' + (toGm ? 'gm' : 'players');
+  $('curtain').className = 'active ' + (toGm ? 'gm' : 'players') + (back ? ' can-back' : '');
   curtainNext = next;
 }
-function hideCurtain() { $('curtain').className = ''; curtainNext = null; }
+function hideCurtain() { $('curtain').className = ''; curtainNext = null; curtainBackFn = null; }
 
 // ---------- board ----------
 let builtFor = -1;
@@ -1086,10 +1108,12 @@ document.querySelectorAll('.zone').forEach((z) => {
 });
 $('gmList').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b || b.disabled) return;
-  gmChoose(Number(b.dataset.i));
+  selectGm(Number(b.dataset.i));
 });
-$('gmMiss').addEventListener('click', () => gmChoose(-1));
-$('gmCancel').addEventListener('click', () => { pendingCtx = null; closeGm(); if (S.gmView) return; curtain(MSG_TO_PLAYERS, null); });
+$('gmMiss').addEventListener('click', () => selectGm(-1));
+$('gmOk').addEventListener('click', () => gmChoose(gmSel));
+$('curtainBack').addEventListener('click', (e) => { e.stopPropagation(); const f = curtainBackFn; hideCurtain(); if (f) f(); });
+$('gmCancel').addEventListener('click', () => { pendingCtx = null; gmSel = null; closeGm(); if (S.gmView) return; curtain(MSG_TO_PLAYERS, null); });
 document.querySelectorAll('.btn-sound').forEach((b) => b.addEventListener('click', toggleSound));
 document.addEventListener('pointerdown', () => Sound.unlock(), true);
 $('curtain').addEventListener('click', () => { const n = curtainNext; hideCurtain(); if (n) n(); });
