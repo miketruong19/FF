@@ -797,7 +797,8 @@ function gmChoose(idx) {
   const c = pendingCtx; if (!c || idx == null) return;
   pendingCtx = null; gmSel = null; closeGm();
   // Nothing is applied yet: the GM can still go back and change the ruling from the green screen.
-  curtain(MSG_TO_PLAYERS, () => playOut(c, idx), 'Tap to reveal', () => showGmPanel(c, idx));
+  // Change ruling goes through the red cover, so a player tapping it can't open the answer list.
+  curtain(MSG_TO_PLAYERS, () => playOut(c, idx), 'Tap to reveal', () => curtain(MSG_TO_GM, () => showGmPanel(c, idx)));
 }
 let busy = false;
 function playOut(c, idx) {
