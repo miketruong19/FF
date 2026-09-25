@@ -86,6 +86,11 @@ table.qs .tot.bad { color: var(--red); font-weight: 700; }
 .ed-row .n { color: var(--muted); width: 22px; text-align: right; font-weight: 700; font-size: 14px; }
 .ed-row input.a { flex: 1; min-width: 0; }
 .ed-row input.p { width: 74px; text-align: center; }
+.ed-mult { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; font-weight: 700; flex-wrap: wrap; }
+.seg { display: flex; gap: 6px; }
+.seg button { min-height: 40px; padding: 6px 14px; font-size: 15px; background: #0b1220; color: var(--muted); border: 1px solid #334155; }
+.seg button.on { background: var(--gold); color: #1c1917; border-color: var(--gold); }
+.mbadge { display: inline-block; background: var(--gold); color: #1c1917; font-weight: 800; font-size: 12px; border-radius: 6px; padding: 1px 6px; margin-left: 6px; vertical-align: 1px; }
 .ed-total { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; font-weight: 700; flex-wrap: wrap; }
 .ed-total .sum { font-size: 26px; }
 .ed-total .sum.ok { color: var(--green); }
@@ -127,6 +132,8 @@ table.qs .tot.bad { color: var(--red); font-weight: 700; }
 .guesscard.hit { color: #fff; }
 .guesscard.hit b { color: var(--gold); }
 .guesscard.miss { color: #fecaca; }
+.guesscard.wait { color: var(--gold); background: rgba(0,0,0,.75); animation: waitpulse .6s ease-in-out infinite alternate; }
+@keyframes waitpulse { from { opacity: .45; transform: scale(.97); } to { opacity: 1; transform: scale(1.03); } }
 .fo-bottom { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px 14px; background: var(--panel); min-height: 74px; flex-wrap: wrap; }
 .fo-msg { font-size: 22px; font-weight: 700; text-align: center; }
 .fo-msg.big { font-size: 28px; color: var(--gold); }
@@ -271,7 +278,7 @@ body.gm .gm-banner { display: block; }
         <div id="fileInfo" class="hint" style="margin:0"></div>
       </div>
       <div class="hint">One row per question, best answer first. Columns:
-        <code>Question | Answer 1 | Points 1 | Answer 2 | Points 2 | … | Answer 8 | Points 8</code>.
+        <code>Question | Answer 1 | Points 1 | … | Answer 8 | Points 8 | Multiplier</code>. Multiplier is optional: 1, 2 or 3.
         A header row is fine. Bad rows are skipped and listed below. Questions are remembered on this iPad.</div>
     </div>
 
@@ -354,6 +361,7 @@ body.gm .gm-banner { display: block; }
   <label class="q"><span>Question</span><input type="text" id="edQ" maxlength="200" placeholder="Name something people do when they can't sleep"></label>
   <div class="hint" style="margin:0 0 10px">Points = out of 100 people surveyed, how many gave this answer. Only the popular answers go on the board, so the total is usually under 100. It can't go over 100.</div>
   <div class="ed-rows" id="edRows"></div>
+  <div class="ed-mult">Points this round <div class="seg" id="edMult"><button data-m="1">×1 normal</button><button data-m="2">×2 double</button><button data-m="3">×3 triple</button></div></div>
   <div class="ed-total">Total <span class="sum" id="edSum">0</span> / 100 <span class="msg" id="edMsg"></span></div>
   <div class="ed-actions"><button id="edSave" class="primary">Save</button><button id="edCancel">Cancel</button></div>
 </div></div>
@@ -387,6 +395,7 @@ function defaultState() {
     qi: 0, phase: 'setup', round: null, gmView: false, qHidden: false, setupOpen: false,
   };
 }
+function qMult(i) { const q = S.questions[i]; return q && q.mult ? q.mult : 1; }
 function newRound(mult) {
   return {
     revealed: Array(MAX).fill(false), pot: 0, strikes: 0, control: null,
@@ -439,8 +448,11 @@ function parseRows(rows) {
     for (let i = 1; i < answers.length; i++) if (answers[i].points > answers[i - 1].points) { warns.push('points are not in rank order'); break; }
     const total = answers.reduce((t, a) => t + a.points, 0);
     if (total > 100) { flags.push({ row: rowNo, level: 'bad', msg: 'Row ' + rowNo + ' skipped: points total ' + total + ', more than 100 people' }); return; }
+    const mRaw = String(cells[1 + 2 * MAX] || '').replace(/[x×\s]/gi, '');
+    let mult = 1;
+    if (mRaw !== '') { if (['1', '2', '3'].includes(mRaw)) mult = Number(mRaw); else warns.push('multiplier "' + cells[1 + 2 * MAX] + '" is not 1, 2 or 3, using ×1'); }
     if (warns.length) flags.push({ row: rowNo, level: 'warn', msg: 'Row ' + rowNo + ' loaded, but ' + warns.join('; ') });
-    questions.push({ q, answers, row: rowNo });
+    questions.push({ q, answers, mult, row: rowNo });
   });
   return { questions, flags };
 }
@@ -480,7 +492,7 @@ function renderSetup() {
     $('qlist').innerHTML = '<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">Questions (tap Edit to fix)</h2><button id="btnExport" class="small">Download as .csv</button></div><table class="qs"><tr><th>#</th><th>Question</th><th>Answers (points)</th><th></th></tr>' +
       S.questions.map((q, i) => {
         const total = q.answers.reduce((t, a) => t + a.points, 0);
-        return '<tr><td class="n">' + (i + 1) + '</td><td>' + esc(q.q) + '</td><td class="ans">' +
+        return '<tr><td class="n">' + (i + 1) + '</td><td>' + esc(q.q) + ((q.mult || 1) > 1 ? '<span class="mbadge">×' + q.mult + '</span>' : '') + '</td><td class="ans">' +
           q.answers.map((a) => '<b>' + esc(a.text) + '</b> (' + a.points + ')').join(', ') +
           ' <div class="tot' + (total > 100 ? ' bad' : '') + '">' + total + ' of 100 people</div></td>' +
           '<td class="act"><button data-edit="' + i + '">Edit</button><button data-up="' + i + '"' + (i === 0 ? ' disabled' : '') + '>▲</button><button data-down="' + i + '"' + (i === S.questions.length - 1 ? ' disabled' : '') + '>▼</button><button data-del="' + i + '" class="danger">✕</button></td></tr>';
@@ -491,7 +503,7 @@ function questionsChanged(editedIndex) {
   // keep the game state sane if questions change mid-game
   if (S.qi >= S.questions.length) S.qi = Math.max(0, S.questions.length - 1);
   if (!S.questions.length) { S.phase = 'setup'; S.round = null; }
-  else if (S.round && (editedIndex == null || editedIndex === S.qi)) S.round = newRound();
+  else if (S.round && (editedIndex == null || editedIndex === S.qi)) S.round = newRound(qMult(S.qi));
   builtFor = -1;
   save(); renderSetup();
 }
@@ -509,10 +521,12 @@ function moveQ(i, d) {
 function exportCsv() {
   const cell = (v) => { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
   const head = ['Question']; for (let k = 1; k <= MAX; k++) head.push('Answer ' + k, 'Points ' + k);
+  head.push('Multiplier');
   const lines = [head.join(',')];
   S.questions.forEach((q) => {
     const r = [cell(q.q)];
     for (let k = 0; k < MAX; k++) { const a = q.answers[k]; r.push(a ? cell(a.text) : '', a ? a.points : ''); }
+    r.push(q.mult || 1);
     lines.push(r.join(','));
   });
   const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv' });
@@ -523,7 +537,8 @@ function exportCsv() {
 }
 
 // ---------- question editor ----------
-let edIndex = -1;
+let edIndex = -1, edMultVal = 1;
+function setEdMult(m) { edMultVal = m; $('edMult').querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.m) === m)); }
 function buildEditor() {
   const rows = $('edRows');
   rows.innerHTML = '';
@@ -540,6 +555,7 @@ function openEditor(i) {
   const q = i >= 0 ? S.questions[i] : null;
   $('edTitle').textContent = q ? 'Edit question ' + (i + 1) : 'Add a question';
   $('edQ').value = q ? q.q : '';
+  setEdMult(q && q.mult ? q.mult : 1);
   const as = $('edRows').querySelectorAll('input.a'), ps = $('edRows').querySelectorAll('input.p');
   for (let k = 0; k < MAX; k++) {
     as[k].value = q && q.answers[k] ? q.answers[k].text : '';
@@ -578,7 +594,7 @@ function saveEditor() {
   const r = readEditor();
   if (r.errors.length) { editorCheck(); return; }
   r.answers.sort((a, b) => b.points - a.points);   // rank order: top answer first
-  const item = { q: r.q, answers: r.answers };
+  const item = { q: r.q, answers: r.answers, mult: edMultVal };
   if (edIndex >= 0) S.questions[edIndex] = item; else S.questions.push(item);
   closeEditor();
   questionsChanged(edIndex >= 0 ? edIndex : -1);
@@ -590,7 +606,7 @@ function readNames() {
 function startGame() {
   readNames();
   S.teams[0].score = 0; S.teams[1].score = 0;
-  S.qi = 0; S.round = newRound(1); S.qHidden = false; S.gmView = false;
+  S.qi = 0; S.round = newRound(qMult(0)); S.qHidden = false; S.gmView = false;
   S.phase = 'faceoff'; S.setupOpen = false; save(); render();
 }
 function continueGame() { readNames(); S.setupOpen = false; save(); render(); }
@@ -646,7 +662,25 @@ function gmPick(team, idx) {
     }
   }
   closeGm(); save(); renderFaceoff();
-  curtain(MSG_TO_PLAYERS, null);
+  curtain(MSG_TO_PLAYERS, () => surveySays(team));
+}
+// "Survey says..." pause: after the GM turns the iPad back, hold the answer for a beat before showing it.
+const SUSPENSE_MS = 1500;
+let suspense = null, suspenseTimer = null;
+function surveySays(team) {
+  suspense = team; renderFaceoff();
+  clearTimeout(suspenseTimer);
+  suspenseTimer = setTimeout(() => {
+    suspense = null;
+    if (S.phase !== 'faceoff' || !S.round) return;
+    renderFaceoff();
+    if (S.round.fo.guesses[team] != null && S.round.fo.guesses[team] < 0) flashX();
+  }, SUSPENSE_MS);
+}
+function flashX() {
+  const f = $('strikeFlash');
+  f.classList.remove('active'); void f.offsetWidth; f.classList.add('active');
+  setTimeout(() => f.classList.remove('active'), 800);
 }
 function decide(team) { S.round.fo.stage = 'decided'; S.round.control = team; }
 function redo() { S.round.fo = newRound().fo; save(); renderFaceoff(); }
@@ -658,7 +692,8 @@ function skipFaceoff() { S.round.control = null; S.phase = 'board'; save(); rend
 
 function renderFaceoff() {
   const q = cur(), fo = S.round.fo;
-  $('foQn').textContent = 'Question ' + (S.qi + 1) + ' of ' + S.questions.length;
+  const m = S.round.mult || 1;
+  $('foQn').innerHTML = 'Question ' + (S.qi + 1) + ' of ' + S.questions.length + (m > 1 ? ' <span class="mbadge" style="font-size:14px;padding:2px 10px">' + (m === 2 ? 'DOUBLE' : 'TRIPLE') + ' POINTS</span>' : '');
   $('foQ').textContent = q.q;
   $('btnArm').disabled = !(fo.stage === 'idle' || fo.stage === 'redo');
   $('btnArm').textContent = fo.stage === 'armed' ? 'Armed…' : 'Arm buzzers';
@@ -666,7 +701,8 @@ function renderFaceoff() {
     const z = zoneEl(s);
     z.querySelector('.zone-name').textContent = tname(s);
     z.classList.toggle('armed', fo.stage === 'armed');
-    const lit = fo.stage === 'decided' ? S.round.control === s : (fo.stage === 'buzzed' || fo.stage === 'second') && fo.winner === s;
+    const lit = suspense != null ? suspense === s
+      : fo.stage === 'decided' ? S.round.control === s : (fo.stage === 'buzzed' || fo.stage === 'second') && fo.winner === s;
     z.classList.toggle('winner', lit);
     z.classList.toggle('has-guess', fo.guesses[s] != null && fo.stage !== 'armed' && fo.stage !== 'idle');
     let sub = '';
@@ -675,12 +711,14 @@ function renderFaceoff() {
     }
     z.querySelector('.zone-sub').textContent = sub;
     const g = fo.guesses[s], gd = z.querySelector('.zone-guess');
-    if (g == null || fo.stage === 'armed' || fo.stage === 'idle') gd.innerHTML = '';
+    if (suspense === s) gd.innerHTML = '<div class="guesscard wait">Survey says…</div>';
+    else if (g == null || fo.stage === 'armed' || fo.stage === 'idle') gd.innerHTML = '';
     else if (g < 0) gd.innerHTML = '<div class="guesscard miss">✗ Not on board</div>';
     else gd.innerHTML = '<div class="guesscard hit">✓ ' + esc(q.answers[g].text) + ' · <b>' + q.answers[g].points + '</b></div>';
   }
   const b = $('foBottom');
   const W = fo.winner == null ? '' : tname(fo.winner), O = fo.winner == null ? '' : tname(1 - fo.winner);
+  if (suspense != null) { b.innerHTML = '<div class="fo-msg big">Survey says…</div>'; return; }
   switch (fo.stage) {
     case 'idle': b.innerHTML = '<div class="fo-msg">Read the question, then tap <b>Arm buzzers</b>.</div>'; break;
     case 'armed': b.innerHTML = '<div class="fo-msg big">Buzzers armed — first touch wins!</div>'; break;
@@ -762,9 +800,7 @@ function strike() {
   r.strikes++;
   if (r.strikes === 3 && r.control != null && !r.steal) r.steal = { team: 1 - r.control, result: null };
   save(); renderBoard();
-  const f = $('strikeFlash');
-  f.classList.remove('active'); void f.offsetWidth; f.classList.add('active');
-  setTimeout(() => f.classList.remove('active'), 800);
+  flashX();
 }
 function givePot(t) {
   if (!S.round.pot) return;
@@ -781,7 +817,7 @@ function editScore(t) {
 function finishGame() { S.phase = 'end'; S.gmView = false; save(); render(); }
 function playAgain() {
   S.teams[0].score = 0; S.teams[1].score = 0;
-  S.qi = 0; S.round = newRound(1); S.qHidden = false; S.gmView = false;
+  S.qi = 0; S.round = newRound(qMult(0)); S.qHidden = false; S.gmView = false;
   S.phase = 'faceoff'; save(); render();
 }
 function renderEnd() {
@@ -798,7 +834,7 @@ function goQuestion(delta) {
   const n = S.qi + delta;
   if (delta > 0 && n >= S.questions.length) { finishGame(); return; }
   if (n < 0 || n >= S.questions.length) return;
-  S.qi = n; S.round = newRound(S.round ? S.round.mult : 1); S.qHidden = false;   // multiplier carries over
+  S.qi = n; S.round = newRound(qMult(n)); S.qHidden = false;   // multiplier comes from the question
   S.phase = 'faceoff'; save(); render();
 }
 function toggleQ() { S.qHidden = !S.qHidden; save(); renderBoard(); }
@@ -909,6 +945,7 @@ $('qlist').addEventListener('click', (e) => {
 $('edRows').addEventListener('input', editorCheck);
 $('edQ').addEventListener('input', editorCheck);
 $('edSave').addEventListener('click', saveEditor);
+$('edMult').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setEdMult(Number(b.dataset.m)); });
 $('edCancel').addEventListener('click', closeEditor);
 $('nameA').addEventListener('change', () => { readNames(); save(); });
 $('nameB').addEventListener('change', () => { readNames(); save(); });

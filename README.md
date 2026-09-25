@@ -48,8 +48,10 @@ Two ways, mix them freely:
 One row per question, best answer first. A header row is fine.
 
 ```
-Question | Answer 1 | Points 1 | Answer 2 | Points 2 | ... | Answer 8 | Points 8
+Question | Answer 1 | Points 1 | Answer 2 | Points 2 | ... | Answer 8 | Points 8 | Multiplier
 ```
+
+Multiplier is optional: 1, 2 or 3 (blank means 1).
 
 Rows with no question, no answers, or non-number points are skipped and listed on the setup screen.
 Rows whose points total more than 100 are skipped. Rows not in descending order load with a warning.
@@ -62,14 +64,15 @@ Rows whose points total more than 100 are skipped. Rows not in descending order 
    First touch wins and shows its lead in milliseconds. Taps before arming flash red and do nothing.
    GM taps **Check answer**, turns the iPad, picks what the player said (or **Not on board**).
    The #1 answer wins control at once; otherwise the other team gets a guess and the higher answer wins.
+   After the GM picks, a short "Survey says…" pause builds suspense before the answer shows.
    Both revealed answers stay up and their points go in the pot. Both miss → **Redo face-off**.
    Then **Play** or **Pass**.
 3. **Board**: tap a slot to flip it (adds to pot). **Strike** flashes an X, max three.
    On the third strike the other team gets one guess to **steal**: tap the answer they give and the whole pot goes to them,
    or tap **Steal missed** and the playing team keeps it. Clearing the board gives the pot to the playing team automatically.
    **Give pot to …** is the manual override. Tap a score to type a correction.
-   **×1 / ×2 / ×3** under the pot sets a double or triple round: slots keep their survey numbers, the pot and the award are multiplied.
-   The setting carries over to the next question until you change it.
+   Each question has its own **×1 / ×2 / ×3** setting, picked in the question editor or the sheet's Multiplier column.
+   Slots keep their survey numbers; the pot and the award are multiplied. The buttons under the pot override it for one round.
    **Reveal all** flips the rest without adding points. ◀ ▶ moves to another question and resets pot and strikes.
    On the last question the ▶ button becomes **Finish game**, which shows the final score and the winner.
    **Play again** zeroes the scores and starts from question 1.
