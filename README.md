@@ -71,6 +71,8 @@ Rows whose points total more than 100 are skipped. Rows not in descending order 
    **×1 / ×2 / ×3** under the pot sets a double or triple round: slots keep their survey numbers, the pot and the award are multiplied.
    The setting carries over to the next question until you change it.
    **Reveal all** flips the rest without adding points. ◀ ▶ moves to another question and resets pot and strikes.
+   On the last question the ▶ button becomes **Finish game**, which shows the final score and the winner.
+   **Play again** zeroes the scores and starts from question 1.
 4. **GM view** (top-right pill) shows every answer with points and marks the revealed ones.
    Switching either way first shows a blank "turn the iPad" cover screen; tap it once the iPad is facing the right people.
    Flips made in GM view play as animations when you switch back to player view. The face-off **Check answer** step uses the same cover.

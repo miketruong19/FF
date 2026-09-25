@@ -210,6 +210,17 @@ table.qs .tot.bad { color: var(--red); font-weight: 700; }
 #strikeFlash.active { display: flex; animation: strikepop .8s ease-out; }
 #strikeFlash span { font-size: 45vh; font-weight: 900; color: var(--red); text-shadow: 0 0 40px rgba(239,68,68,.8); line-height: 1; }
 @keyframes strikepop { 0% { opacity: 0; transform: scale(.6); } 15% { opacity: 1; transform: scale(1.05); } 80% { opacity: 1; transform: scale(1); } 100% { opacity: 0; } }
+#end { align-items: center; justify-content: center; text-align: center; gap: 18px; padding: 24px; }
+#end .e-title { font-size: 22px; color: var(--muted); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+#end .e-winner { font-size: min(11vw, 72px); font-weight: 900; line-height: 1.1; color: var(--gold); }
+#end .e-scores { display: flex; gap: 16px; }
+#end .e-team { border-radius: 18px; padding: 18px 28px; min-width: 200px; }
+#end .e-team.t0 { background: var(--a-dark); }
+#end .e-team.t1 { background: var(--b-dark); }
+#end .e-team.won { box-shadow: 0 0 0 5px var(--gold); }
+#end .e-name { font-size: 22px; font-weight: 800; }
+#end .e-score { font-size: 56px; font-weight: 900; }
+#end .e-actions { display: flex; gap: 12px; margin-top: 10px; }
 #curtain {
   display: none; position: fixed; inset: 0; z-index: 70; background: var(--bg);
   flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; gap: 14px;
@@ -322,6 +333,17 @@ body.gm .gm-banner { display: block; }
     <div class="team t0"><div class="tname"><span class="nm"></span><span class="ctl">▶ CONTROL</span></div><div class="tscore" data-t="0">0</div><button class="give" data-give="0">Give pot</button></div>
     <div class="team t1"><div class="tname"><span class="nm"></span><span class="ctl">▶ CONTROL</span></div><div class="tscore" data-t="1">0</div><button class="give" data-give="1">Give pot</button></div>
   </footer>
+</section>
+
+<!-- ================= END ================= -->
+<section id="end" class="screen">
+  <div class="e-title">Final score</div>
+  <div class="e-winner" id="endWinner"></div>
+  <div class="e-scores">
+    <div class="e-team t0"><div class="e-name"></div><div class="e-score"></div></div>
+    <div class="e-team t1"><div class="e-name"></div><div class="e-score"></div></div>
+  </div>
+  <div class="e-actions"><button id="btnPlayAgain" class="primary">Play again</button><button id="btnEndSetup">Setup</button></div>
 </section>
 
 <div id="qEditor" class="overlay"><div class="ed-box">
@@ -751,8 +773,25 @@ function editScore(t) {
   if (!isFinite(n)) return;
   S.teams[t].score = Math.round(n); save(); renderBoard();
 }
+function finishGame() { S.phase = 'end'; S.gmView = false; save(); render(); }
+function playAgain() {
+  S.teams[0].score = 0; S.teams[1].score = 0;
+  S.qi = 0; S.round = newRound(1); S.qHidden = false; S.gmView = false;
+  S.phase = 'faceoff'; save(); render();
+}
+function renderEnd() {
+  const a = S.teams[0].score, b = S.teams[1].score;
+  $('endWinner').textContent = a === b ? "It's a tie!" : tname(a > b ? 0 : 1) + ' wins!';
+  for (let t = 0; t < 2; t++) {
+    const el = document.querySelector('#end .e-team.t' + t);
+    el.querySelector('.e-name').textContent = tname(t);
+    el.querySelector('.e-score').textContent = S.teams[t].score;
+    el.classList.toggle('won', S.teams[t].score > S.teams[1 - t].score);
+  }
+}
 function goQuestion(delta) {
   const n = S.qi + delta;
+  if (delta > 0 && n >= S.questions.length) { finishGame(); return; }
   if (n < 0 || n >= S.questions.length) return;
   S.qi = n; S.round = newRound(S.round ? S.round.mult : 1); S.qHidden = false;   // multiplier carries over
   S.phase = 'faceoff'; save(); render();
@@ -787,7 +826,10 @@ function renderBoard() {
   $('bQ').textContent = S.qHidden ? '(question hidden)' : q.q;
   $('bQ').classList.toggle('hidden', S.qHidden);
   $('btnEye').textContent = S.qHidden ? 'Show' : 'Hide';
-  $('btnPrev').disabled = S.qi === 0; $('btnNext').disabled = S.qi >= S.questions.length - 1;
+  $('btnPrev').disabled = S.qi === 0;
+  const last = S.qi >= S.questions.length - 1;
+  $('btnNext').textContent = last ? 'Finish game' : '▶';
+  $('btnNext').classList.toggle('primary', last);
   $('pot').textContent = potValue();
   $('potLbl').textContent = (r.mult || 1) > 1 ? 'POT ×' + r.mult : 'POT';
   document.querySelectorAll('.mult button').forEach((b) => { b.classList.toggle('on', Number(b.dataset.mult) === (r.mult || 1)); b.disabled = r.over; });
@@ -841,6 +883,7 @@ function render() {
   closeGm(); hideCurtain();
   if (S.phase === 'setup' || S.setupOpen) { $('setup').classList.add('active'); renderSetup(); }
   else if (S.phase === 'faceoff') { $('faceoff').classList.add('active'); renderFaceoff(); }
+  else if (S.phase === 'end') { $('end').classList.add('active'); renderEnd(); }
   else { $('board').classList.add('active'); renderBoard(); }
 }
 
@@ -901,6 +944,8 @@ $('btnBoardSetup').addEventListener('click', gotoSetup);
 $('btnPrev').addEventListener('click', () => goQuestion(-1));
 $('btnNext').addEventListener('click', () => goQuestion(1));
 $('btnEye').addEventListener('click', toggleQ);
+$('btnPlayAgain').addEventListener('click', playAgain);
+$('btnEndSetup').addEventListener('click', gotoSetup);
 $('gmToggle').addEventListener('click', toggleGm);
 document.querySelectorAll('.give').forEach((b) => b.addEventListener('click', () => givePot(Number(b.dataset.give))));
 document.querySelectorAll('.tscore').forEach((b) => b.addEventListener('click', () => editScore(Number(b.dataset.t))));
