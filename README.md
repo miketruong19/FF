@@ -12,6 +12,9 @@ No server, no login. Once loaded it works offline.
 | `sw.js` | Service worker: caches the app so it opens with no network |
 | `manifest.webmanifest` | Lets Safari "Add to Home Screen" as a full-screen app |
 | `sample-questions.csv` | Example sheet, includes two bad rows so you can see them flagged |
+| `game-night.csv` | Ready-to-play set for about an hour: 15 questions, Filipino/Vietnamese family flavor, last five are ×2 and ×3 |
+| `filipino-vietnamese-family.csv` | 24 Filipino and Vietnamese family questions |
+| `family-questions.csv` | 24 general, everyday family-friendly questions |
 
 ## Put it on the iPad
 
@@ -75,5 +78,7 @@ Rows whose points total more than 100 are skipped. Rows not in descending order 
    **Give pot to …** is the manual override. Tap a score to type a correction.
    Each question has its own **×1 / ×2 / ×3**, from the editor or the sheet. The buttons under the pot override it for one round.
 6. **Next question / Finish game** appears in the banner when the round is over. Finish shows the final score and winner; **Play again** starts over.
-7. **GM view** (top-right pill) shows every answer. Anything revealed or struck there plays with animation and sound when you switch back.
-8. **Sound**: game-show style sounds made in code (not the TV show's). Toggle with the Sound button. If the iPad is silent, check its volume and silent switch.
+7. **Undo** (side panel) takes back the last action: a reveal, strike, face-off pick, Play/Pass, steal, pot award, ×2/×3 or score edit.
+   Tap it again to go further back. The list clears when you move to another question.
+8. **GM view** (top-right pill) shows every answer. Anything revealed or struck there plays with animation and sound when you switch back.
+9. **Sound**: game-show style sounds made in code (not the TV show's). Toggle with the Sound button. If the iPad is silent, check its volume and silent switch.
