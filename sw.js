@@ -1,7 +1,8 @@
 // Service worker: caches the app so it keeps working with no network.
 // Strategy: serve from cache first, refresh the cache in the background.
-const CACHE = 'family-feud-v1';
-const FILES = ['./', './index.html', './xlsx.mini.min.js', './manifest.webmanifest'];
+const CACHE = 'family-feud-v2';
+const FILES = ['./', './index.html', './xlsx.mini.min.js', './manifest.webmanifest',
+  './game-night.csv', './filipino-vietnamese-family.csv', './family-questions.csv'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));

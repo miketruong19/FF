@@ -296,6 +296,12 @@ body.gm .gm-banner { display: block; }
         <label class="filebtn">Upload spreadsheet (.xlsx / .csv)<input type="file" id="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
         <div id="fileInfo" class="hint" style="margin:0"></div>
       </div>
+      <div class="row" id="sets" style="margin-top:12px">
+        <span class="hint" style="margin:0">Built-in sets:</span>
+        <button class="small" data-set="0">🎉 Game night (about 1 hour)</button>
+        <button class="small" data-set="1">🇵🇭🇻🇳 Filipino &amp; Vietnamese family</button>
+        <button class="small" data-set="2">🏠 Everyday family</button>
+      </div>
       <div class="hint">One row per question, best answer first. Columns:
         <code>Question | Answer 1 | Points 1 | … | Answer 8 | Points 8 | Multiplier</code>. Multiplier is optional: 1, 2 or 3.
         A header row is fine. Bad rows are skipped and listed below. Questions are remembered on this iPad.</div>
@@ -437,14 +443,15 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return;
+    if (!raw) return false;
     const s = JSON.parse(raw);
     S = Object.assign(defaultState(), s);
     if (S.round && S.round.fo && S.round.fo.stage === 'armed') S.round.fo.stage = 'idle';
     if (S.round && S.round.foDone === undefined) S.round.foDone = S.phase === 'board';   // saves from older versions
     if (S.phase === 'faceoff' && S.round && S.round.fo.stage !== 'idle') S.phase = 'board';
     if (S.phase !== 'setup' && (!S.questions.length || !S.round)) S.phase = 'setup';
-  } catch (e) { S = defaultState(); }
+    return true;
+  } catch (e) { S = defaultState(); return false; }
 }
 const cur = () => S.questions[S.qi];
 const tname = (t) => S.teams[t].name || (t === 0 ? 'Team A' : 'Team B');
@@ -494,18 +501,44 @@ function handleFile(file) {
   reader.onerror = () => { info.textContent = 'Could not read file.'; };
   reader.onload = () => {
     try {
-      const wb = isCsv ? XLSX.read(reader.result, { type: 'string' }) : XLSX.read(reader.result, { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
-      const res = parseRows(rows);
-      S.questions = res.questions; S.flags = res.flags; S.sheetName = file.name;
-      S.phase = 'setup'; S.round = null; S.qi = 0;
-      save(); renderSetup();
+      applyQuestions(parseSheet(reader.result, isCsv ? 'string' : 'array'), file.name);
     } catch (e) {
       info.textContent = 'Could not parse file: ' + (e && e.message ? e.message : e);
     }
   };
   if (isCsv) reader.readAsText(file); else reader.readAsArrayBuffer(file);
+}
+
+function parseSheet(data, type) {
+  const wb = XLSX.read(data, { type });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  return parseRows(XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' }));
+}
+function applyQuestions(res, name) {
+  S.questions = res.questions; S.flags = res.flags; S.sheetName = name;
+  S.phase = 'setup'; S.round = null; S.qi = 0; S.setupOpen = false;
+  clearUndo(); save(); render();
+}
+// Question sets that ship with the app (CSV files next to index.html, cached for offline use).
+const BUILT_IN = [
+  { file: 'game-night.csv', name: 'Game night' },
+  { file: 'filipino-vietnamese-family.csv', name: 'Filipino & Vietnamese family' },
+  { file: 'family-questions.csv', name: 'Everyday family' },
+];
+async function loadBuiltIn(i, quiet) {
+  const set = BUILT_IN[i];
+  if (!quiet && S.questions.length) {
+    const inGame = S.round && S.phase !== 'setup';
+    if (!confirm('Replace your ' + S.questions.length + ' questions with "' + set.name + '"?' + (inGame ? '\nThis also ends the game in progress.' : ''))) return;
+  }
+  $('fileInfo').textContent = 'Loading ' + set.name + '…';
+  try {
+    const r = await fetch(set.file);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    applyQuestions(parseSheet(await r.text(), 'string'), set.name);
+  } catch (e) {
+    $('fileInfo').textContent = 'Could not load ' + set.name + '. Check the internet connection and try again.';
+  }
 }
 
 // ---------- setup screen ----------
@@ -1124,6 +1157,7 @@ $('file').addEventListener('change', (e) => { if (e.target.files[0]) handleFile(
 $('btnStart').addEventListener('click', startGame);
 $('btnContinue').addEventListener('click', continueGame);
 $('btnAddQ').addEventListener('click', () => openEditor(-1));
+$('sets').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) loadBuiltIn(Number(b.dataset.set)); });
 $('qlist').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.id === 'btnExport') exportCsv();
@@ -1191,8 +1225,9 @@ document.querySelectorAll('.tscore').forEach((b) => b.addEventListener('click', 
 
 // ---------- boot ----------
 buildEditor();
-load();
+const hadSave = load();
 render();
+if (!hadSave) loadBuiltIn(0, true);   // first launch on this device: start with the game-night set
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }

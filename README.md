@@ -12,8 +12,8 @@ No server, no login. Once loaded it works offline.
 | `sw.js` | Service worker: caches the app so it opens with no network |
 | `manifest.webmanifest` | Lets Safari "Add to Home Screen" as a full-screen app |
 | `sample-questions.csv` | Example sheet, includes two bad rows so you can see them flagged |
-| `game-night.csv` | Ready-to-play set for about an hour: 15 questions, Filipino/Vietnamese family flavor, last five are ×2 and ×3 |
-| `filipino-vietnamese-family.csv` | 24 Filipino and Vietnamese family questions |
+| `game-night.csv` | Default set, about an hour: 15 questions for a Filipino + Vietnamese family that loves to cook; last five are ×2 and ×3 |
+| `filipino-vietnamese-family.csv` | 36 Filipino and Vietnamese family questions (food, cooking, holidays, growing up here) |
 | `family-questions.csv` | 24 general, everyday family-friendly questions |
 
 ## Put it on the iPad
@@ -39,7 +39,10 @@ Opening `index.html` straight from the Files app does not work well in Safari, s
 
 ## Adding questions
 
-Two ways, mix them freely:
+**Built-in sets**: Setup has buttons for the three sets that ship with the app (Game night, Filipino & Vietnamese family, Everyday family).
+The first time the app opens on a device it loads Game night by itself. The sets are cached, so they load offline too.
+
+You can also make your own, and mix freely:
 
 - **In the app**: Setup → **+ Add a question**. Type the question and up to 8 answers with points.
   Points are how many of the 100 people surveyed gave that answer, so the total can't go over 100 (it's usually under). Answers get sorted by points on save.
