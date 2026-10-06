@@ -9,11 +9,11 @@ No server, no login. Once loaded it works offline.
 |---|---|
 | `index.html` | The whole app: screens, styles, game logic |
 | `xlsx.mini.min.js` | SheetJS, reads `.xlsx` and `.csv` files in the browser (Apache-2.0, see `LICENSE-sheetjs.txt`) |
-| `sw.js` | Service worker: caches the app so it opens with no network |
+| `sw.js` | Service worker: keeps a copy of the app; uses the network when it can, the saved copy when offline |
 | `manifest.webmanifest` | Lets Safari "Add to Home Screen" as a full-screen app |
 | `sample-questions.csv` | Example sheet, includes two bad rows so you can see them flagged |
-| `game-night.csv` | Default set, about an hour: 15 questions for a Filipino + Vietnamese family that loves to cook; last five are ×2 and ×3 |
-| `filipino-vietnamese-family.csv` | 36 Filipino and Vietnamese family questions (food, cooking, holidays, growing up here) |
+| `game-night.csv` | Default set, about an hour: 15 questions; last five are ×2 and ×3 |
+| `filipino-vietnamese-family.csv` | "Family favorites": 21 more questions, none repeated from Game night |
 | `family-questions.csv` | 24 general, everyday family-friendly questions |
 
 ## Put it on the iPad
@@ -39,7 +39,8 @@ Opening `index.html` straight from the Files app does not work well in Safari, s
 
 ## Adding questions
 
-**Built-in sets**: Setup has buttons for the three sets that ship with the app (Game night, Filipino & Vietnamese family, Everyday family).
+**Built-in sets**: Setup has buttons for the three sets that ship with the app (Game night, Family favorites, Everyday family).
+Game night and Family favorites are written for a Filipino family vs a mixed Vietnamese-Filipino family: every question is about what both cultures share (cooking, fish sauce, rice, karaoke, parents), so neither side gets home turf.
 The first time the app opens on a device it loads Game night by itself. The sets are cached, so they load offline too.
 
 You can also make your own, and mix freely:

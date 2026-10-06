@@ -299,7 +299,7 @@ body.gm .gm-banner { display: block; }
       <div class="row" id="sets" style="margin-top:12px">
         <span class="hint" style="margin:0">Built-in sets:</span>
         <button class="small" data-set="0">🎉 Game night (about 1 hour)</button>
-        <button class="small" data-set="1">🇵🇭🇻🇳 Filipino &amp; Vietnamese family</button>
+        <button class="small" data-set="1">🍚 Family favorites (21 more)</button>
         <button class="small" data-set="2">🏠 Everyday family</button>
       </div>
       <div class="hint">One row per question, best answer first. Columns:
@@ -522,7 +522,7 @@ function applyQuestions(res, name) {
 // Question sets that ship with the app (CSV files next to index.html, cached for offline use).
 const BUILT_IN = [
   { file: 'game-night.csv', name: 'Game night' },
-  { file: 'filipino-vietnamese-family.csv', name: 'Filipino & Vietnamese family' },
+  { file: 'filipino-vietnamese-family.csv', name: 'Family favorites' },
   { file: 'family-questions.csv', name: 'Everyday family' },
 ];
 async function loadBuiltIn(i, quiet) {

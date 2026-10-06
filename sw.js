@@ -1,6 +1,6 @@
-// Service worker: caches the app so it keeps working with no network.
-// Strategy: serve from cache first, refresh the cache in the background.
-const CACHE = 'family-feud-v2';
+// Service worker: keeps a copy of the app so it works with no network.
+// Strategy: try the network first (so updates show right away), fall back to the saved copy when offline.
+const CACHE = 'family-feud-v3';
 const FILES = ['./', './index.html', './xlsx.mini.min.js', './manifest.webmanifest',
   './game-night.csv', './filipino-vietnamese-family.csv', './family-questions.csv'];
 
@@ -18,12 +18,9 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   e.respondWith(
-    caches.match(e.request).then((cached) => {
-      const fresh = fetch(e.request).then((res) => {
-        if (res && res.ok) caches.open(CACHE).then((c) => c.put(e.request, res.clone()));
-        return res;
-      }).catch(() => cached);
-      return cached || fresh;
-    })
+    fetch(e.request).then((res) => {
+      if (res && res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); }
+      return res;
+    }).catch(() => caches.match(e.request, { ignoreSearch: true }).then((hit) => hit || Response.error()))
   );
 });
