@@ -1,0 +1,21 @@
+{
+  "name": "ff-tv-relay",
+  "private": true,
+  "description": "Serves Family Feud and relays the iPad's board to the TV. See ../README.md, TV mode.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test \"test/*.test.mjs\"",
+    "e2e": "node test/e2e.mjs",
+    "smoke": "node test/smoke.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.48.0"
+  }
+}

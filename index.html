@@ -70,6 +70,17 @@ input[type=text] {
 .tphoto { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; flex: none; background: #0b1220; box-shadow: 0 0 0 2px rgba(255,255,255,.55); }
 .tphoto[hidden] { display: none; }
 .tphoto-row .tphoto { width: 56px; height: 56px; }
+/* TV mode: only shown when the page comes from the relay (server/). */
+#tvCard[hidden], #tvCard [hidden], #tvPill[hidden] { display: none !important; }
+#tvCode { width: 6.2em; font-size: 28px; font-weight: 800; letter-spacing: .25em; text-transform: uppercase; text-align: center;
+  background: #0b1220; color: var(--text); border: 2px solid #334155; border-radius: 12px; padding: 6px 10px; }
+#tvCode:focus { outline: none; border-color: var(--gold); }
+.tv-state { font-size: 18px; font-weight: 700; }
+.tv-state b { color: var(--gold); letter-spacing: .12em; }
+.tv-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; background: var(--muted); vertical-align: 1px; }
+.tv-dot.live { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.tv-dot.retry { background: var(--gold); animation: waitpulse .6s ease-in-out infinite alternate; }
+.tv-pill { font-size: 13px; font-weight: 700; text-align: center; padding: 6px 8px; border-radius: 10px; background: #0b1220; white-space: nowrap; }
 .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 .flag { background: #3f1d1d; border-left: 4px solid var(--red); padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; font-size: 14px; }
 .flag.warn { background: #3b2f0b; border-left-color: var(--gold); }
@@ -332,6 +343,13 @@ body.gm .gm-banner { display: block; }
       </div>
     </div></div>
 
+    <div class="card" id="tvCard" hidden><h2>📺 TV</h2>
+      <div class="row" id="tvJoin"><input type="text" id="tvCode" maxlength="4" placeholder="CODE" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false"><button id="btnTvJoin" class="primary">Connect</button></div>
+      <div class="row" id="tvLive" hidden><span class="tv-state" id="tvState"></span><button id="btnTvStop" class="small">Disconnect</button></div>
+      <div class="row" id="tvResume" hidden style="margin-top:10px"><button id="btnTvResume" class="primary">Resume game</button><span id="tvResumeInfo" class="hint" style="margin:0"></span></div>
+      <div class="hint" id="tvHint"></div>
+    </div>
+
     <div class="card"><h2>3. Play</h2><div class="row">
       <button id="btnStart" class="primary" disabled>Start game</button>
       <button id="btnContinue" style="display:none">Continue game</button>
@@ -385,6 +403,7 @@ body.gm .gm-banner { display: block; }
       <button id="btnRevealAll" class="small">Reveal all</button>
       <button class="btn-sound small" id="btnSoundB">🔊 Sound on</button>
       <button id="btnBoardSetup" class="small">Setup</button>
+      <div id="tvPill" class="tv-pill" hidden></div>
     </aside>
   </main>
   <footer class="b-bottom">
@@ -609,7 +628,7 @@ async function setPhoto(t, file) {
     const data = await shrinkPhoto(file);
     await photoStore('readwrite', (s) => s.put(data, 'team' + t));
     photos[t] = data;
-    showPhotos();
+    showPhotos(); TV.photo(t);
   } catch (e) {
     toast('Could not use that photo. Try another one.');
   }
@@ -618,7 +637,7 @@ async function removePhoto(t) {
   if (!confirm('Remove the photo for ' + tname(t) + '?')) return;
   try { await photoStore('readwrite', (s) => s.delete('team' + t)); } catch (e) { /* already gone */ }
   photos[t] = null;
-  showPhotos();
+  showPhotos(); TV.photo(t);
 }
 function showPhotos() {
   document.querySelectorAll('img[data-photo]').forEach((img) => {
@@ -631,6 +650,187 @@ function showPhotos() {
     document.querySelector('[data-photo-remove="' + t + '"]').hidden = !photos[t];
   }
 }
+
+// ---------- TV mode ----------
+// Only when this page is served by the relay in server/ (ff.eventurelog.ca), never on github.io.
+// The iPad stays the whole game. Joined to a TV's room (the 4-letter code on the TV), it sends a
+// small snapshot of what the players can see after every change: answers only once revealed, never
+// the GM's list. Photos go once, shrunk to 256px. If the line drops, the game carries on here and the
+// TV catches up from the next snapshot. The room also keeps a backup of the game for Resume.
+const TV_PHOTO_SIDE = 256;
+let tvX = 0;   // counts the X's shown (strikes, face-off misses, missed steals), so the TV flashes each once
+function tvView() {
+  const v = { phase: S.phase, teams: [0, 1].map((t) => ({ name: tname(t), score: S.teams[t].score })) };
+  const r = S.round, q = cur();
+  if (S.phase === 'setup' || !r || !q) { v.phase = 'setup'; return v; }
+  v.qn = S.qi + 1; v.qs = S.questions.length; v.q = S.qHidden ? null : q.q;
+  v.mult = r.mult || 1; v.n = q.answers.length;
+  v.shown = [];
+  q.answers.forEach((a, i) => { if (r.revealed[i]) v.shown.push([i, a.text, a.points]); });
+  v.strikes = r.strikes; v.pot = potValue(); v.control = r.control; v.foDone = !!r.foDone;
+  v.fo = { stage: r.fo.stage, winner: r.fo.winner, lead: r.fo.lead };
+  v.steal = r.steal ? { team: r.steal.team, result: r.steal.result } : null;
+  v.over = !!r.over; v.winner = r.over ? r.winner : null; v.msg = r.over ? r.msg : '';
+  v.survey = busy; v.x = tvX;
+  return v;
+}
+function shrinkData(data, side) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, side / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      resolve(c.toDataURL('image/jpeg', 0.8));
+    };
+    img.onerror = () => resolve(null);
+    img.src = data;
+  });
+}
+const TV = (() => {
+  const LS = 'family-feud-tv';
+  let available = false, ws = null, code = null, key = null, want = false, state = 'off', note = '';
+  let synced = false, tries = 0, retryTimer = null, pingTimer = null, heardAt = 0, lastView = '', lastBackup = '', backupTimer = null, queued = false, offer = null;
+  const stats = { sent: 0, bytes: 0 };   // read by the tests
+  const saved = () => { try { return JSON.parse(localStorage.getItem(LS) || 'null'); } catch (e) { return null; } };
+  function remember() {
+    try { if (code && key) localStorage.setItem(LS, JSON.stringify({ code, key })); else localStorage.removeItem(LS); } catch (e) {}
+    // The code and key also ride in the address, so a reload (even one that lost storage) rejoins as host.
+    try { history.replaceState(null, '', code && key ? '#tv=' + code + '.' + key : location.pathname + location.search); } catch (e) {}
+  }
+  function fromHash() { const m = /^#tv=([A-Z]{4})\.([\w-]{8,})$/.exec(location.hash); return m ? { code: m[1], key: m[2] } : null; }
+  function raw(s) { if (!ws || ws.readyState !== 1) return false; ws.send(s); stats.sent++; stats.bytes += s.length; return true; }
+  function send(obj) { return state === 'live' && raw(JSON.stringify(obj)); }
+  function connect() {
+    clearTimeout(retryTimer);
+    if (ws) { ws.onclose = null; try { ws.close(); } catch (e) {} ws = null; }
+    state = tries ? 'retry' : 'connecting'; paint();
+    let sock;
+    try { sock = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'); } catch (e) { return lost(); }
+    ws = sock; heardAt = Date.now();
+    sock.onopen = () => { heardAt = Date.now(); sock.send(JSON.stringify(key ? { t: 'host', code, key } : { t: 'host', code })); };
+    sock.onmessage = (e) => { heardAt = Date.now(); let m; try { m = JSON.parse(e.data); } catch (x) { return; } onMessage(m); };
+    sock.onclose = (e) => {
+      if (ws !== sock) return;
+      if (e.code === 4000) {   // another iPad with this game's key took over
+        ws = null; want = false; offer = null;   // storage is shared with the tab that took over, so leave it
+        note = 'Another iPad took over this game.'; state = 'off'; paint(); return;
+      }
+      lost();
+    };
+  }
+  function lost() {
+    ws = null;
+    if (!want) { state = 'off'; paint(); return; }
+    tries++; state = 'retry'; paint();
+    retryTimer = setTimeout(connect, Math.min(10000, 700 * 2 ** Math.min(tries, 4)));
+  }
+  function onMessage(m) {
+    if (m.t === 'joined') {
+      key = m.key; tries = 0; note = ''; remember();
+      lastView = ''; lastBackup = '';
+      const b = m.backup;
+      // Offer Resume only to an iPad with no game of its own that hasn't fed this room yet.
+      offer = b && !synced && S.phase === 'setup' && !S.round && (!bootHadSave || b.phase !== 'setup') ? b : null;
+      state = 'live'; paint();
+      if (!offer) syncAll();
+    } else if (m.t === 'error' && (m.reason === 'taken' || m.reason === 'nocode')) {
+      const c = code;
+      want = false; code = key = null; offer = null; remember();
+      if (ws) { ws.onclose = null; try { ws.close(); } catch (e) {} ws = null; }
+      note = m.reason === 'taken' ? c + ' already has a game master. Check the code on the TV.' : 'No game with code ' + c + '. Check the code on the TV.';
+      state = 'off'; paint();
+    } else if (m.t === 'backup') applyBackup(m);
+  }
+  // Everything the room should hold, sent fresh. Held back while "Resume game" is on offer, so an
+  // empty iPad can't overwrite the room's game, photos or TV picture before the GM decides.
+  function syncAll() { synced = true; lastView = ''; lastBackup = ''; publish(); sendPhotos(); backupSoon(0); }
+  function publish() {
+    if (state !== 'live' || offer) return;
+    const s = JSON.stringify({ t: 'view', view: tvView() });
+    if (s !== lastView && raw(s)) lastView = s;
+  }
+  function backupSoon(ms) {
+    // While "Resume game" is on offer, this iPad's (empty) game must not overwrite the room's backup.
+    if (state !== 'live' || offer) return;
+    clearTimeout(backupTimer);
+    backupTimer = setTimeout(() => {
+      const s = JSON.stringify({ t: 'backup', state: S });
+      if (s !== lastBackup && state === 'live' && raw(s)) lastBackup = s;
+    }, ms == null ? 2000 : ms);
+  }
+  async function sendPhoto(t) {
+    if (offer) return;
+    const data = photos[t] ? await shrinkData(photos[t], TV_PHOTO_SIDE) : null;
+    send({ t: 'photo', team: t, data });
+  }
+  function sendPhotos() { sendPhoto(0); sendPhoto(1); }
+  async function applyBackup(m) {
+    if (!m.state) { toast('Nothing to resume yet.'); offer = null; paint(); return; }
+    S = Object.assign(defaultState(), m.state);
+    S.gmView = false;
+    if (S.round && S.round.fo && S.round.fo.stage === 'armed') S.round.fo.stage = 'idle';
+    builtFor = -1;
+    save(); clearUndo();
+    for (let t = 0; t < 2; t++) {
+      const data = m.photos && m.photos[t];
+      if (data && !photos[t]) { try { await photoStore('readwrite', (s) => s.put(data, 'team' + t)); photos[t] = data; } catch (e) {} }
+    }
+    offer = null;
+    showPhotos(); render(); paint(); syncAll(); toast('Game resumed');
+  }
+  // Each side pings; a line that has gone quiet for 25 s is treated as dropped.
+  pingTimer = setInterval(() => {
+    if (!ws || ws.readyState !== 1) return;
+    if (Date.now() - heardAt > 25000) { try { ws.close(); } catch (e) {} if (ws) lost(); return; }
+    raw('{"t":"ping"}');
+  }, 10000);
+  window.addEventListener('online', () => { if (want && state !== 'live') { tries = Math.max(tries, 1); connect(); } });
+  function paint() {
+    $('tvCard').hidden = !available;
+    if (!available) return;
+    const on = want || state === 'live';
+    $('tvJoin').hidden = on; $('tvLive').hidden = !on;
+    const dot = (cls) => '<span class="tv-dot ' + cls + '"></span>';
+    if (state === 'live') $('tvState').innerHTML = dot('live') + 'On the TV: <b>' + esc(code) + '</b>';
+    else if (state === 'retry') $('tvState').innerHTML = dot('retry') + 'Reconnecting to <b>' + esc(code || '') + '</b>… the game carries on here.';
+    else if (state === 'connecting') $('tvState').innerHTML = dot('') + 'Connecting to <b>' + esc(code || '') + '</b>…';
+    $('tvHint').textContent = note || (on ? '' : 'On the TV, open ' + location.host + '/tv, then type the 4-letter code it shows.');
+    $('tvHint').hidden = !$('tvHint').textContent;
+    $('tvResume').hidden = !offer;
+    if (offer) $('tvResumeInfo').textContent = offer.teams[0] + ' ' + offer.scores[0] + ' – ' + offer.teams[1] + ' ' + offer.scores[1] + (offer.phase === 'setup' ? '' : ' · question ' + offer.question + ' of ' + offer.questions);
+    const pill = $('tvPill');
+    pill.hidden = !on;
+    pill.innerHTML = state === 'live' ? dot('live') + 'TV ' + esc(code) : dot('retry') + 'TV reconnecting';
+  }
+  return {
+    stats,
+    init() {
+      if (/\.github\.io$/.test(location.hostname)) return;   // the solo build: no relay there
+      fetch('api/info', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((j) => {
+        if (!j || !j.ff) return;
+        available = true;
+        const s = fromHash() || saved();
+        if (s) { code = s.code; key = s.key; want = true; connect(); } else paint();
+      }).catch(() => {});
+    },
+    join(text) {
+      const c = String(text || '').toUpperCase().replace(/[^A-Z]/g, '');
+      if (c.length !== 4) { note = 'Type the 4 letters shown on the TV.'; paint(); return; }
+      const s = saved();
+      code = c; key = s && s.code === c ? s.key : null; want = true; tries = 0; note = ''; connect();
+    },
+    stop() { want = false; clearTimeout(retryTimer); code = key = null; offer = null; note = ''; remember(); if (ws) { const w = ws; ws = null; w.onclose = null; try { w.close(); } catch (e) {} } state = 'off'; paint(); },
+    resume() { if (!send({ t: 'resume' })) toast('Not connected to the TV right now.'); },
+    // Called after anything on screen changes; several in one tick send one snapshot.
+    changed() {
+      if (offer && S.phase !== 'setup') { offer = null; paint(); syncAll(); }   // a new game started here instead of resuming
+      if (queued || state !== 'live') return; queued = true; queueMicrotask(() => { queued = false; publish(); backupSoon(); }); },
+    photo(t) { if (state === 'live') { sendPhoto(t); backupSoon(); } },
+    paint,
+  };
+})();
 
 // ---------- setup screen ----------
 function renderSetup() {
@@ -650,6 +850,7 @@ function renderSetup() {
           '<td class="act"><button data-edit="' + i + '">Edit</button><button data-up="' + i + '"' + (i === 0 ? ' disabled' : '') + '>▲</button><button data-down="' + i + '"' + (i === S.questions.length - 1 ? ' disabled' : '') + '>▼</button><button data-del="' + i + '" class="danger">✕</button></td></tr>';
       }).join('') + '</table></div>';
   } else $('qlist').innerHTML = '';
+  TV.changed();
 }
 // ---------- undo ----------
 // Every game action saves a snapshot first; Undo puts the last one back. The list is cleared on a new question.
@@ -910,6 +1111,7 @@ function renderFaceoff() {
   if (fo.stage === 'idle') b.innerHTML = '<div class="fo-msg">Read the question, then tap <b>Arm buzzers</b>.</div>';
   else if (fo.stage === 'armed') b.innerHTML = '<div class="fo-msg big">Buzzers armed — first touch wins!</div>';
   else b.innerHTML = '<div class="fo-msg big">' + esc(tname(fo.winner)) + ' buzzed first! Going to the board…</div>';
+  TV.changed();
 }
 function skipFaceoff() { S.round.control = null; S.round.foDone = true; S.phase = 'board'; save(); render(); }
 
@@ -1011,7 +1213,7 @@ function flashX() {
   Sound.strike();
 }
 let pendingX = 0, celebrate = false;   // effects waiting for the players' view
-function queueX() { pendingX++; }
+function queueX() { pendingX++; tvX++; }
 const MSG_TO_GM = 'Turn the iPad toward you, GM. Nobody else should see the screen.';
 const MSG_TO_PLAYERS = 'Turn the iPad back toward the players.';
 let curtainNext = null;
@@ -1102,6 +1304,7 @@ function renderEnd() {
     el.querySelector('.e-score').textContent = S.teams[t].score;
     el.classList.toggle('won', S.teams[t].score > S.teams[1 - t].score);
   }
+  TV.changed();
 }
 function goQuestion(delta) {
   const n = S.qi + delta;
@@ -1228,6 +1431,7 @@ function renderBoard() {
     }
     if (celebrate) { celebrate = false; setTimeout(() => Sound.fanfare(), t + 150); }
   }
+  TV.changed();
 }
 
 // ---------- top-level render ----------
@@ -1313,6 +1517,10 @@ $('btnEndSetup').addEventListener('click', gotoSetup);
 $('gmToggle').addEventListener('click', toggleGm);
 document.querySelectorAll('.give').forEach((b) => b.addEventListener('click', () => doAction('Give pot', () => givePot(Number(b.dataset.give)))));
 document.querySelectorAll('.tscore').forEach((b) => b.addEventListener('click', () => doAction('Score edit', () => editScore(Number(b.dataset.t)))));
+$('btnTvJoin').addEventListener('click', () => TV.join($('tvCode').value));
+$('tvCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') TV.join($('tvCode').value); });
+$('btnTvStop').addEventListener('click', () => TV.stop());
+$('btnTvResume').addEventListener('click', () => TV.resume());
 document.querySelectorAll('[data-photo-pick]').forEach((b) => b.addEventListener('click', () => document.querySelector('[data-photo-input="' + b.dataset.photoPick + '"]').click()));
 document.querySelectorAll('[data-photo-remove]').forEach((b) => b.addEventListener('click', () => removePhoto(Number(b.dataset.photoRemove))));
 document.querySelectorAll('[data-photo-input]').forEach((inp) => inp.addEventListener('change', () => {
@@ -1324,8 +1532,10 @@ document.querySelectorAll('[data-photo-input]').forEach((inp) => inp.addEventLis
 // ---------- boot ----------
 buildEditor();
 const hadSave = load();
+const bootHadSave = hadSave;
 render();
 loadPhotos();
+TV.init();
 if (!hadSave) loadBuiltIn(0, true);   // first launch on this device: start with the game-night set
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
