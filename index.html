@@ -64,6 +64,12 @@ input[type=text] {
 .teams label span { display: block; margin-bottom: 6px; }
 .teams .ta span { color: #60a5fa; }
 .teams .tb span { color: #fb923c; }
+.tcol { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.tphoto-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* A team's photo: round, cropped to fill. Only shown once one is set. */
+.tphoto { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; flex: none; background: #0b1220; box-shadow: 0 0 0 2px rgba(255,255,255,.55); }
+.tphoto[hidden] { display: none; }
+.tphoto-row .tphoto { width: 56px; height: 56px; }
 .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 .flag { background: #3f1d1d; border-left: 4px solid var(--red); padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; font-size: 14px; }
 .flag.warn { background: #3b2f0b; border-left-color: var(--gold); }
@@ -124,6 +130,7 @@ table.qs .tot.bad { color: var(--red); font-weight: 700; }
 .zone.has-guess[data-side="1"] { background: var(--b); }
 .zone.early { animation: earlyflash .45s ease-out; }
 @keyframes earlyflash { 0% { background: var(--red); filter: brightness(1.2); } 100% { } }
+.zone .tphoto { width: min(26vw, 120px); height: min(26vw, 120px); pointer-events: none; box-shadow: 0 0 0 3px rgba(255,255,255,.7); }
 .zone-name { font-size: 28px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; opacity: .95; }
 .zone-big { font-size: min(18vw, 120px); font-weight: 900; letter-spacing: .05em; line-height: 1; }
 .zone-sub { font-size: 20px; font-weight: 700; min-height: 26px; color: var(--gold); }
@@ -247,6 +254,8 @@ table.qs .tot.bad { color: var(--red); font-weight: 700; }
 #end .e-team.t0 { background: var(--a-dark); }
 #end .e-team.t1 { background: var(--b-dark); }
 #end .e-team.won { box-shadow: 0 0 0 5px var(--gold); }
+#end .e-team .tphoto { width: 76px; height: 76px; display: block; margin: 0 auto 8px; }
+#end .e-team .tphoto[hidden] { display: none; }
 #end .e-name { font-size: 22px; font-weight: 800; }
 #end .e-score { font-size: 56px; font-weight: 900; }
 #end .e-actions { display: flex; gap: 12px; margin-top: 10px; }
@@ -278,6 +287,7 @@ body.gm .gm-banner { display: block; }
   .team .tscore { font-size: 28px; min-width: 60px; }
   .team .tname { font-size: 16px; }
   .team .tname .ctl { display: none !important; }
+  .team .tphoto { width: 34px; height: 34px; }
 }
 </style>
 </head>
@@ -308,8 +318,18 @@ body.gm .gm-banner { display: block; }
     </div>
 
     <div class="card"><h2>2. Teams</h2><div class="teams">
-      <label class="ta"><span>Team A</span><input type="text" id="nameA" maxlength="20" placeholder="Team A"></label>
-      <label class="tb"><span>Team B</span><input type="text" id="nameB" maxlength="20" placeholder="Team B"></label>
+      <div class="tcol ta">
+        <label class="ta"><span>Team A</span><input type="text" id="nameA" maxlength="20" placeholder="Team A"></label>
+        <div class="tphoto-row"><img class="tphoto" data-photo="0" alt="Team A photo" hidden>
+          <button class="small" data-photo-pick="0">Add photo</button><button class="small" data-photo-remove="0" hidden>Remove</button>
+          <input type="file" accept="image/*" data-photo-input="0" hidden></div>
+      </div>
+      <div class="tcol tb">
+        <label class="tb"><span>Team B</span><input type="text" id="nameB" maxlength="20" placeholder="Team B"></label>
+        <div class="tphoto-row"><img class="tphoto" data-photo="1" alt="Team B photo" hidden>
+          <button class="small" data-photo-pick="1">Add photo</button><button class="small" data-photo-remove="1" hidden>Remove</button>
+          <input type="file" accept="image/*" data-photo-input="1" hidden></div>
+      </div>
     </div></div>
 
     <div class="card"><h2>3. Play</h2><div class="row">
@@ -336,8 +356,8 @@ body.gm .gm-banner { display: block; }
     <button id="btnFoSetup" class="small">Setup</button>
   </div>
   <div class="fo-zones">
-    <div class="zone" data-side="0"><div class="zone-name"></div><div class="zone-big">BUZZ</div><div class="zone-sub"></div><div class="zone-guess"></div></div>
-    <div class="zone" data-side="1"><div class="zone-name"></div><div class="zone-big">BUZZ</div><div class="zone-sub"></div><div class="zone-guess"></div></div>
+    <div class="zone" data-side="0"><img class="tphoto" data-photo="0" alt="" hidden><div class="zone-name"></div><div class="zone-big">BUZZ</div><div class="zone-sub"></div><div class="zone-guess"></div></div>
+    <div class="zone" data-side="1"><img class="tphoto" data-photo="1" alt="" hidden><div class="zone-name"></div><div class="zone-big">BUZZ</div><div class="zone-sub"></div><div class="zone-guess"></div></div>
   </div>
   <div class="fo-bottom" id="foBottom"></div>
 </section>
@@ -368,8 +388,8 @@ body.gm .gm-banner { display: block; }
     </aside>
   </main>
   <footer class="b-bottom">
-    <div class="team t0"><div class="tname"><span class="nm"></span><span class="ctl">▶ CONTROL</span></div><div class="tscore" data-t="0">0</div><button class="give" data-give="0">Give pot</button></div>
-    <div class="team t1"><div class="tname"><span class="nm"></span><span class="ctl">▶ CONTROL</span></div><div class="tscore" data-t="1">0</div><button class="give" data-give="1">Give pot</button></div>
+    <div class="team t0"><img class="tphoto" data-photo="0" alt="" hidden><div class="tname"><span class="nm"></span><span class="ctl">▶ CONTROL</span></div><div class="tscore" data-t="0">0</div><button class="give" data-give="0">Give pot</button></div>
+    <div class="team t1"><img class="tphoto" data-photo="1" alt="" hidden><div class="tname"><span class="nm"></span><span class="ctl">▶ CONTROL</span></div><div class="tscore" data-t="1">0</div><button class="give" data-give="1">Give pot</button></div>
   </footer>
 </section>
 
@@ -378,8 +398,8 @@ body.gm .gm-banner { display: block; }
   <div class="e-title">Final score</div>
   <div class="e-winner" id="endWinner"></div>
   <div class="e-scores">
-    <div class="e-team t0"><div class="e-name"></div><div class="e-score"></div></div>
-    <div class="e-team t1"><div class="e-name"></div><div class="e-score"></div></div>
+    <div class="e-team t0"><img class="tphoto" data-photo="0" alt="" hidden><div class="e-name"></div><div class="e-score"></div></div>
+    <div class="e-team t1"><img class="tphoto" data-photo="1" alt="" hidden><div class="e-name"></div><div class="e-score"></div></div>
   </div>
   <div class="e-actions"><button id="btnPlayAgain" class="primary">Play again</button><button id="btnEndSetup">Setup</button></div>
 </section>
@@ -538,6 +558,77 @@ async function loadBuiltIn(i, quiet) {
     applyQuestions(parseSheet(await r.text(), 'string'), set.name);
   } catch (e) {
     $('fileInfo').textContent = 'Could not load ' + set.name + '. Check the internet connection and try again.';
+  }
+}
+
+// ---------- team photos ----------
+// One photo per team, picked from the iPad's photos or camera. Each is shrunk on
+// the iPad to PHOTO_SIDE px on its longest side and kept in this browser's
+// IndexedDB, so it survives reloads and works offline. Photos never leave the
+// iPad: nothing here sends them anywhere, and they aren't in the repo or on Pages.
+const PHOTO_SIDE = 512;
+let photos = [null, null];   // data: URLs, or null for a team with no photo
+function photoStore(mode, fn) {
+  return new Promise((resolve, reject) => {
+    const open = indexedDB.open('family-feud', 1);
+    open.onupgradeneeded = () => open.result.createObjectStore('photos');
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const tx = open.result.transaction('photos', mode);
+      const req = fn(tx.objectStore('photos'));
+      tx.oncomplete = () => { open.result.close(); resolve(req.result); };
+      tx.onerror = () => { open.result.close(); reject(tx.error); };
+    };
+  });
+}
+async function loadPhotos() {
+  for (let t = 0; t < 2; t++) {
+    try { photos[t] = (await photoStore('readonly', (s) => s.get('team' + t))) || null; } catch (e) { photos[t] = null; }
+  }
+  showPhotos();
+}
+function shrinkPhoto(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, PHOTO_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.naturalWidth * k));
+      c.height = Math.max(1, Math.round(img.naturalHeight * k));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('not an image')); };
+    img.src = url;
+  });
+}
+async function setPhoto(t, file) {
+  try {
+    const data = await shrinkPhoto(file);
+    await photoStore('readwrite', (s) => s.put(data, 'team' + t));
+    photos[t] = data;
+    showPhotos();
+  } catch (e) {
+    toast('Could not use that photo. Try another one.');
+  }
+}
+async function removePhoto(t) {
+  if (!confirm('Remove the photo for ' + tname(t) + '?')) return;
+  try { await photoStore('readwrite', (s) => s.delete('team' + t)); } catch (e) { /* already gone */ }
+  photos[t] = null;
+  showPhotos();
+}
+function showPhotos() {
+  document.querySelectorAll('img[data-photo]').forEach((img) => {
+    const p = photos[Number(img.dataset.photo)];
+    img.hidden = !p;
+    if (p) img.src = p; else img.removeAttribute('src');
+  });
+  for (let t = 0; t < 2; t++) {
+    document.querySelector('[data-photo-pick="' + t + '"]').textContent = photos[t] ? 'Change photo' : 'Add photo';
+    document.querySelector('[data-photo-remove="' + t + '"]').hidden = !photos[t];
   }
 }
 
@@ -1222,11 +1313,19 @@ $('btnEndSetup').addEventListener('click', gotoSetup);
 $('gmToggle').addEventListener('click', toggleGm);
 document.querySelectorAll('.give').forEach((b) => b.addEventListener('click', () => doAction('Give pot', () => givePot(Number(b.dataset.give)))));
 document.querySelectorAll('.tscore').forEach((b) => b.addEventListener('click', () => doAction('Score edit', () => editScore(Number(b.dataset.t)))));
+document.querySelectorAll('[data-photo-pick]').forEach((b) => b.addEventListener('click', () => document.querySelector('[data-photo-input="' + b.dataset.photoPick + '"]').click()));
+document.querySelectorAll('[data-photo-remove]').forEach((b) => b.addEventListener('click', () => removePhoto(Number(b.dataset.photoRemove))));
+document.querySelectorAll('[data-photo-input]').forEach((inp) => inp.addEventListener('change', () => {
+  const file = inp.files && inp.files[0];
+  inp.value = '';   // so picking the same photo again still fires
+  if (file) setPhoto(Number(inp.dataset.photoInput), file);
+}));
 
 // ---------- boot ----------
 buildEditor();
 const hadSave = load();
 render();
+loadPhotos();
 if (!hadSave) loadBuiltIn(0, true);   // first launch on this device: start with the game-night set
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
