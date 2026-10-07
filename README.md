@@ -37,6 +37,12 @@ Then on the iPad:
 
 Opening `index.html` straight from the Files app does not work well in Safari, so use a URL.
 
+## Team photos
+
+On Setup, each team has **Add photo**, which opens the iPad's photos or camera. The photo is shrunk on the iPad to 512 pixels on its longest side and shown next to the team's name in the face-off, on the scoreboard and on the final score. **Change photo** picks another one, and **Remove** takes it off. A team with no photo looks the same as before.
+
+Photos stay on the iPad. They're kept in Safari's storage for this app, so they work offline and come back after a reload, but they're never uploaded, never part of this repo and never on the Pages site.
+
 ## Adding questions
 
 **Built-in sets**: Setup has buttons for the three sets that ship with the app (Game night, Family favorites, Everyday family).

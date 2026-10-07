@@ -1,6 +1,6 @@
 // Service worker: keeps a copy of the app so it works with no network.
 // Strategy: try the network first (so updates show right away), fall back to the saved copy when offline.
-const CACHE = 'family-feud-v3';
+const CACHE = 'family-feud-v4';
 const FILES = ['./', './index.html', './xlsx.mini.min.js', './manifest.webmanifest',
   './game-night.csv', './filipino-vietnamese-family.csv', './family-questions.csv'];
 
