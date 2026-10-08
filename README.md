@@ -1,4 +1,6 @@
-# Family Feud (iPad, no server)
+# PAMILY PHEUD
+
+A Family Feud game for one iPad, with an optional TV board (see TV mode).
 
 A one-page Family Feud board for a game master (GM) and two teams sharing one iPad.
 No server, no login. Once loaded it works offline.
