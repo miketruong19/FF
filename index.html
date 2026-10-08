@@ -70,6 +70,32 @@ input[type=text] {
 .tphoto { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; flex: none; background: #0b1220; box-shadow: 0 0 0 2px rgba(255,255,255,.55); }
 .tphoto[hidden] { display: none; }
 .tphoto-row .tphoto { width: 56px; height: 56px; }
+/* GM console: when the iPad is joined to a TV, the TV is the game screen and the iPad is the GM's.
+   Every answer shows flat with its points; no flips, no X overlay, no sounds; scores in a slim strip. */
+body.console #gmToggle, body.console .gm-banner, body.console #strikeFlash, body.console .btn-sound { display: none !important; }
+body.console .grid .slot { cursor: pointer; }
+body.console .grid.gm .back { font-size: 16px; }
+body.console .grid.gm .slot:not(.revealed):not(.empty) .back { background: #273449; border-color: #3b82f6; }
+body.console .grid.gm .slot:not(.revealed):not(.empty):active .back { filter: brightness(1.3); }
+body.console .b-bottom .team { padding: 6px 10px; gap: 8px; }
+body.console .b-bottom .team .tname { font-size: 16px; }
+body.console .b-bottom .team .tscore { font-size: 24px; min-width: 64px; padding: 2px 8px; }
+body.console .b-bottom .team .tphoto { width: 30px; height: 30px; }
+body.console .b-bottom .team .give { min-height: 40px; padding: 8px 12px; font-size: 14px; }
+body.console .pot .num { font-size: 40px; }
+body.console .zone.count .zone-big { font-size: 64px; animation: none; }
+body.console .b-status .hint { font-size: 14px; font-weight: 600; color: var(--muted); }
+/* TV mode: only shown when the page comes from the relay (server/). */
+#tvCard[hidden], #tvCard [hidden], #tvPill[hidden] { display: none !important; }
+#tvCode { width: 6.2em; font-size: 28px; font-weight: 800; letter-spacing: .25em; text-transform: uppercase; text-align: center;
+  background: #0b1220; color: var(--text); border: 2px solid #334155; border-radius: 12px; padding: 6px 10px; }
+#tvCode:focus { outline: none; border-color: var(--gold); }
+.tv-state { font-size: 18px; font-weight: 700; }
+.tv-state b { color: var(--gold); letter-spacing: .12em; }
+.tv-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; background: var(--muted); vertical-align: 1px; }
+.tv-dot.live { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.tv-dot.retry { background: var(--gold); animation: waitpulse .6s ease-in-out infinite alternate; }
+.tv-pill { font-size: 13px; font-weight: 700; text-align: center; padding: 6px 8px; border-radius: 10px; background: #0b1220; white-space: nowrap; }
 .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 .flag { background: #3f1d1d; border-left: 4px solid var(--red); padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; font-size: 14px; }
 .flag.warn { background: #3b2f0b; border-left-color: var(--gold); }
@@ -133,6 +159,9 @@ table.qs .tot.bad { color: var(--red); font-weight: 700; }
 .zone .tphoto { width: min(26vw, 120px); height: min(26vw, 120px); pointer-events: none; box-shadow: 0 0 0 3px rgba(255,255,255,.7); }
 .zone-name { font-size: 28px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; opacity: .95; }
 .zone-big { font-size: min(18vw, 120px); font-weight: 900; letter-spacing: .05em; line-height: 1; }
+.zone.count .zone-big { color: var(--gold); animation: countpop .9s ease-out; }
+@keyframes countpop { 0% { transform: scale(1.5); opacity: 0; } 25% { transform: scale(1); opacity: 1; } 100% { opacity: 1; } }
+.fo-q.veiled { color: var(--muted); font-style: italic; font-weight: 600; }
 .zone-sub { font-size: 20px; font-weight: 700; min-height: 26px; color: var(--gold); }
 .zone-guess { position: absolute; bottom: 14px; left: 14px; right: 14px; text-align: center; }
 .guesscard { display: inline-block; background: rgba(0,0,0,.5); border-radius: 16px; padding: 14px 26px; font-size: 30px; font-weight: 800; }
@@ -170,6 +199,12 @@ table.qs .tot.bad { color: var(--red); font-weight: 700; }
 .b-qwrap { flex: 1; min-width: 0; }
 .b-qn { color: var(--muted); font-size: 13px; font-weight: 600; }
 .b-q { font-size: 22px; font-weight: 700; line-height: 1.2; }
+/* The question in Tagalog and Vietnamese, if the set has them: smaller lines under the English. */
+.q-tr { display: grid; gap: 1px; margin-top: 3px; }
+.q-tr:empty { display: none; }
+.q-tr div { font-size: 14px; font-weight: 600; color: #cbd5e1; line-height: 1.3; }
+.q-tr b { display: inline-block; min-width: 26px; margin-right: 6px; font-size: 10px; font-weight: 800; letter-spacing: .08em; color: var(--muted);
+  border: 1px solid #475569; border-radius: 4px; padding: 0 4px; text-align: center; vertical-align: 2px; }
 .b-q.hidden { color: var(--muted); font-style: italic; font-weight: 500; }
 .b-main { flex: 1; display: flex; gap: 10px; padding: 10px; min-height: 0; }
 .b-status { display: none; align-items: center; justify-content: center; gap: 14px; padding: 8px 12px; font-size: 20px; font-weight: 800; flex-wrap: wrap; }
@@ -243,9 +278,12 @@ table.qs .tot.bad { color: var(--red); font-weight: 700; }
   display: none; position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.6);
   align-items: center; justify-content: center; pointer-events: none;
 }
-#strikeFlash.active { display: flex; animation: strikepop .8s ease-out; }
-#strikeFlash span { font-size: 45vh; font-weight: 900; color: var(--red); text-shadow: 0 0 40px rgba(239,68,68,.8); line-height: 1; }
-@keyframes strikepop { 0% { opacity: 0; transform: scale(.6); } 15% { opacity: 1; transform: scale(1.05); } 80% { opacity: 1; transform: scale(1); } 100% { opacity: 0; } }
+/* The show's strike: one, two or three big red X's, about 1.5 s, with the buzzer. */
+#strikeFlash.active { display: flex; gap: 3vw; animation: strikepop 1.5s ease-out forwards; }
+#strikeFlash .x { width: min(28vw, 40vh); aspect-ratio: 1; border: .9vh solid var(--red); border-radius: 3vh; background: rgba(127,29,29,.55);
+  display: flex; align-items: center; justify-content: center; font-size: min(26vw, 36vh); font-weight: 900; color: var(--red);
+  text-shadow: 0 0 40px rgba(239,68,68,.9); box-shadow: 0 0 60px rgba(239,68,68,.6), inset 0 0 40px rgba(239,68,68,.35); line-height: 1; }
+@keyframes strikepop { 0% { opacity: 0; transform: scale(.6); } 10% { opacity: 1; transform: scale(1.06); } 20% { transform: scale(1); } 85% { opacity: 1; } 100% { opacity: 0; } }
 #end { align-items: center; justify-content: center; text-align: center; gap: 18px; padding: 24px; }
 #end .e-title { font-size: 22px; color: var(--muted); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 #end .e-winner { font-size: min(11vw, 72px); font-weight: 900; line-height: 1.1; color: var(--gold); }
@@ -332,6 +370,13 @@ body.gm .gm-banner { display: block; }
       </div>
     </div></div>
 
+    <div class="card" id="tvCard" hidden><h2>📺 TV</h2>
+      <div class="row" id="tvJoin"><input type="text" id="tvCode" maxlength="4" placeholder="CODE" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false"><button id="btnTvJoin" class="primary">Connect</button></div>
+      <div class="row" id="tvLive" hidden><span class="tv-state" id="tvState"></span><button id="btnTvStop" class="small">Disconnect</button></div>
+      <div class="row" id="tvResume" hidden style="margin-top:10px"><button id="btnTvResume" class="primary">Resume game</button><span id="tvResumeInfo" class="hint" style="margin:0"></span></div>
+      <div class="hint" id="tvHint"></div>
+    </div>
+
     <div class="card"><h2>3. Play</h2><div class="row">
       <button id="btnStart" class="primary" disabled>Start game</button>
       <button id="btnContinue" style="display:none">Continue game</button>
@@ -350,6 +395,7 @@ body.gm .gm-banner { display: block; }
     <div style="flex:1;min-width:0">
       <div class="fo-qn" id="foQn"></div>
       <div class="fo-q" id="foQ"></div>
+      <div class="q-tr" id="foTr"></div>
     </div>
     <button id="btnArm" class="primary">Arm buzzers</button>
     <button id="btnSkipFo" class="small">Skip face-off</button>
@@ -367,7 +413,7 @@ body.gm .gm-banner { display: block; }
   <div class="gm-banner">GM VIEW — TURN THE IPAD AWAY FROM THE PLAYERS</div>
   <header class="b-top">
     <button id="btnPrev" class="qbtn">◀</button>
-    <div class="b-qwrap"><div class="b-qn" id="bQn"></div><div class="b-q" id="bQ"></div></div>
+    <div class="b-qwrap"><div class="b-qn" id="bQn"></div><div class="b-q" id="bQ"></div><div class="q-tr" id="bTr"></div></div>
     <button id="btnEye" class="qbtn" title="Hide / show question">Hide</button>
     <button id="btnNext" class="qbtn">▶</button>
     <div style="width:96px"></div>
@@ -385,6 +431,7 @@ body.gm .gm-banner { display: block; }
       <button id="btnRevealAll" class="small">Reveal all</button>
       <button class="btn-sound small" id="btnSoundB">🔊 Sound on</button>
       <button id="btnBoardSetup" class="small">Setup</button>
+      <div id="tvPill" class="tv-pill" hidden></div>
     </aside>
   </main>
   <footer class="b-bottom">
@@ -407,6 +454,8 @@ body.gm .gm-banner { display: block; }
 <div id="qEditor" class="overlay"><div class="ed-box">
   <h2 id="edTitle">Add a question</h2>
   <label class="q"><span>Question</span><input type="text" id="edQ" maxlength="200" placeholder="Name something people do when they can't sleep"></label>
+  <label class="q"><span>Question in Tagalog (optional)</span><input type="text" id="edQtl" maxlength="200" placeholder="Magbigay ng…"></label>
+  <label class="q"><span>Question in Vietnamese (optional)</span><input type="text" id="edQvi" maxlength="200" placeholder="Kể tên…"></label>
   <div class="hint" style="margin:0 0 10px">Points = out of 100 people surveyed, how many gave this answer. Only the popular answers go on the board, so the total is usually under 100. It can't go over 100.</div>
   <div class="ed-rows" id="edRows"></div>
   <div class="ed-mult">Points this round <div class="seg" id="edMult"><button data-m="1">×1 normal</button><button data-m="2">×2 double</button><button data-m="3">×3 triple</button></div></div>
@@ -425,7 +474,7 @@ body.gm .gm-banner { display: block; }
 
 <div id="curtain"><div class="c-icon" id="curtainIcon">🔄</div><div class="c-msg" id="curtainMsg"></div><div class="c-sub" id="curtainSub">Tap anywhere when it's safe</div><button id="curtainBack" class="small">↩ Change ruling</button></div>
 <div id="toast"></div>
-<div id="strikeFlash"><span>✕</span></div>
+<div id="strikeFlash"></div>
 <button id="gmToggle">GM view</button>
 
 </div>
@@ -466,7 +515,7 @@ function load() {
     if (!raw) return false;
     const s = JSON.parse(raw);
     S = Object.assign(defaultState(), s);
-    if (S.round && S.round.fo && S.round.fo.stage === 'armed') S.round.fo.stage = 'idle';
+    if (S.round && S.round.fo && (S.round.fo.stage === 'armed' || S.round.fo.stage === 'countdown')) S.round.fo.stage = 'idle';
     if (S.round && S.round.foDone === undefined) S.round.foDone = S.phase === 'board';   // saves from older versions
     if (S.phase === 'faceoff' && S.round && S.round.fo.stage !== 'idle') S.phase = 'board';
     if (S.phase !== 'setup' && (!S.questions.length || !S.round)) S.phase = 'setup';
@@ -481,13 +530,20 @@ function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 function parseRows(rows) {
   const questions = [], flags = [];
   let seenHeader = false;
+  // The question in Tagalog and Vietnamese: optional columns, right after Multiplier unless a header row
+  // names them elsewhere. Sheets without them load as before.
+  let colTl = 2 + 2 * MAX, colVi = 3 + 2 * MAX;
   rows.forEach((r, idx) => {
     const rowNo = idx + 1;
     const cells = (r || []).map((c) => (c == null ? '' : String(c).trim()));
     if (cells.every((c) => c === '')) return;
     const q = cells[0] || '';
     // header row: first non-empty row whose first cell says "question" and has no numeric points
-    if (!seenHeader && !questions.length && /question/i.test(q) && !isNum(cells[2])) { seenHeader = true; return; }
+    if (!seenHeader && !questions.length && /question/i.test(q) && !isNum(cells[2])) {
+      seenHeader = true;
+      cells.forEach((c, i) => { if (/tagalog|filipino/i.test(c)) colTl = i; else if (/vietnam|việt/i.test(c)) colVi = i; });
+      return;
+    }
     seenHeader = true;
     const problems = [], warns = [], answers = [];
     if (!q) problems.push('no question text');
@@ -507,7 +563,10 @@ function parseRows(rows) {
     let mult = 1;
     if (mRaw !== '') { if (['1', '2', '3'].includes(mRaw)) mult = Number(mRaw); else warns.push('multiplier "' + cells[1 + 2 * MAX] + '" is not 1, 2 or 3, using ×1'); }
     if (warns.length) flags.push({ row: rowNo, level: 'warn', msg: 'Row ' + rowNo + ' loaded, but ' + warns.join('; ') });
-    questions.push({ q, answers, mult, row: rowNo });
+    const item = { q, answers, mult, row: rowNo };
+    if (cells[colTl]) item.tl = cells[colTl];
+    if (cells[colVi]) item.vi = cells[colVi];
+    questions.push(item);
   });
   return { questions, flags };
 }
@@ -609,7 +668,7 @@ async function setPhoto(t, file) {
     const data = await shrinkPhoto(file);
     await photoStore('readwrite', (s) => s.put(data, 'team' + t));
     photos[t] = data;
-    showPhotos();
+    showPhotos(); TV.photo(t);
   } catch (e) {
     toast('Could not use that photo. Try another one.');
   }
@@ -618,7 +677,7 @@ async function removePhoto(t) {
   if (!confirm('Remove the photo for ' + tname(t) + '?')) return;
   try { await photoStore('readwrite', (s) => s.delete('team' + t)); } catch (e) { /* already gone */ }
   photos[t] = null;
-  showPhotos();
+  showPhotos(); TV.photo(t);
 }
 function showPhotos() {
   document.querySelectorAll('img[data-photo]').forEach((img) => {
@@ -630,6 +689,203 @@ function showPhotos() {
     document.querySelector('[data-photo-pick="' + t + '"]').textContent = photos[t] ? 'Change photo' : 'Add photo';
     document.querySelector('[data-photo-remove="' + t + '"]').hidden = !photos[t];
   }
+}
+
+// ---------- TV mode ----------
+// Only when this page is served by the relay in server/ (ff.eventurelog.ca), never on github.io.
+// The iPad stays the whole game. Joined to a TV's room (the 4-letter code on the TV), it sends a
+// small snapshot of what the players can see after every change: answers only once revealed, never
+// the GM's list. Photos go once, shrunk to 256px. If the line drops, the game carries on here and the
+// TV catches up from the next snapshot. The room also keeps a backup of the game for Resume.
+const TV_PHOTO_SIDE = 256;
+// Joined to a TV room (even while reconnecting): the iPad is the GM console, the TV the game screen.
+const consoleMode = () => document.body.classList.contains('console');
+let tvX = 0, tvXn = 1;   // counts the X flashes (and how many X's the last one showed) (strikes, face-off misses, missed steals), so the TV flashes each once
+function tvView() {
+  const v = { phase: S.phase, teams: [0, 1].map((t) => ({ name: tname(t), score: S.teams[t].score })) };
+  const r = S.round, q = cur();
+  if (S.phase === 'setup' || !r || !q) { v.phase = 'setup'; return v; }
+  v.qn = S.qi + 1; v.qs = S.questions.length;
+  // The question stays off the TV until the face-off buzzers go live.
+  const veiled = S.phase === 'faceoff' && !r.fo.seen && (r.fo.stage === 'idle' || r.fo.stage === 'countdown');
+  v.q = S.qHidden || veiled ? null : q.q; v.veiled = veiled;
+  if (v.q != null) { if (q.tl) v.tl = q.tl; if (q.vi) v.vi = q.vi; }
+  v.mult = r.mult || 1; v.n = q.answers.length;
+  v.shown = [];
+  q.answers.forEach((a, i) => { if (r.revealed[i]) v.shown.push([i, a.text, a.points]); });
+  v.strikes = r.strikes; v.pot = potValue(); v.control = r.control; v.foDone = !!r.foDone;
+  v.fo = { stage: r.fo.stage, winner: r.fo.winner, lead: r.fo.lead, cd: r.fo.cd };
+  v.steal = r.steal ? { team: r.steal.team, result: r.steal.result } : null;
+  v.over = !!r.over; v.winner = r.over ? r.winner : null; v.msg = r.over ? r.msg : '';
+  v.survey = busy; v.x = tvX; v.xn = tvXn; v.passed = !!r.passed;
+  return v;
+}
+function shrinkData(data, side) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, side / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      resolve(c.toDataURL('image/jpeg', 0.8));
+    };
+    img.onerror = () => resolve(null);
+    img.src = data;
+  });
+}
+const TV = (() => {
+  const LS = 'family-feud-tv';
+  let available = false, ws = null, code = null, key = null, want = false, state = 'off', note = '';
+  let synced = false, tries = 0, retryTimer = null, pingTimer = null, heardAt = 0, lastView = '', lastBackup = '', backupTimer = null, queued = false, offer = null;
+  const stats = { sent: 0, bytes: 0 };   // read by the tests
+  const saved = () => { try { return JSON.parse(localStorage.getItem(LS) || 'null'); } catch (e) { return null; } };
+  function remember() {
+    try { if (code && key) localStorage.setItem(LS, JSON.stringify({ code, key })); else localStorage.removeItem(LS); } catch (e) {}
+    // The code and key also ride in the address, so a reload (even one that lost storage) rejoins as host.
+    try { history.replaceState(null, '', code && key ? '#tv=' + code + '.' + key : location.pathname + location.search); } catch (e) {}
+  }
+  function fromHash() { const m = /^#tv=([A-Z]{4})\.([\w-]{8,})$/.exec(location.hash); return m ? { code: m[1], key: m[2] } : null; }
+  function raw(s) { if (!ws || ws.readyState !== 1) return false; ws.send(s); stats.sent++; stats.bytes += s.length; return true; }
+  function send(obj) { return state === 'live' && raw(JSON.stringify(obj)); }
+  function connect() {
+    clearTimeout(retryTimer);
+    if (ws) { ws.onclose = null; try { ws.close(); } catch (e) {} ws = null; }
+    state = tries ? 'retry' : 'connecting'; paint();
+    let sock;
+    try { sock = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'); } catch (e) { return lost(); }
+    ws = sock; heardAt = Date.now();
+    sock.onopen = () => { heardAt = Date.now(); sock.send(JSON.stringify(key ? { t: 'host', code, key } : { t: 'host', code })); };
+    sock.onmessage = (e) => { heardAt = Date.now(); let m; try { m = JSON.parse(e.data); } catch (x) { return; } onMessage(m); };
+    sock.onclose = (e) => {
+      if (ws !== sock) return;
+      if (e.code === 4000) {   // another iPad with this game's key took over
+        ws = null; want = false; offer = null;   // storage is shared with the tab that took over, so leave it
+        note = 'Another iPad took over this game.'; state = 'off'; paint(); return;
+      }
+      lost();
+    };
+  }
+  function lost() {
+    ws = null;
+    if (!want) { state = 'off'; paint(); return; }
+    tries++; state = 'retry'; paint();
+    retryTimer = setTimeout(connect, Math.min(10000, 700 * 2 ** Math.min(tries, 4)));
+  }
+  function onMessage(m) {
+    if (m.t === 'joined') {
+      key = m.key; tries = 0; note = ''; remember();
+      lastView = ''; lastBackup = '';
+      const b = m.backup;
+      // Offer Resume only to an iPad with no game of its own that hasn't fed this room yet.
+      offer = b && !synced && S.phase === 'setup' && !S.round && (!bootHadSave || b.phase !== 'setup') ? b : null;
+      state = 'live'; paint();
+      if (!offer) syncAll();
+    } else if (m.t === 'error' && (m.reason === 'taken' || m.reason === 'nocode')) {
+      const c = code;
+      want = false; code = key = null; offer = null; remember();
+      if (ws) { ws.onclose = null; try { ws.close(); } catch (e) {} ws = null; }
+      note = m.reason === 'taken' ? c + ' already has a game master. Check the code on the TV.' : 'No game with code ' + c + '. Check the code on the TV.';
+      state = 'off'; paint();
+    } else if (m.t === 'backup') applyBackup(m);
+  }
+  // Everything the room should hold, sent fresh. Held back while "Resume game" is on offer, so an
+  // empty iPad can't overwrite the room's game, photos or TV picture before the GM decides.
+  function syncAll() { synced = true; lastView = ''; lastBackup = ''; publish(); sendPhotos(); backupSoon(0); }
+  function publish() {
+    if (state !== 'live' || offer) return;
+    const s = JSON.stringify({ t: 'view', view: tvView() });
+    if (s !== lastView && raw(s)) lastView = s;
+  }
+  function backupSoon(ms) {
+    // While "Resume game" is on offer, this iPad's (empty) game must not overwrite the room's backup.
+    if (state !== 'live' || offer) return;
+    clearTimeout(backupTimer);
+    backupTimer = setTimeout(() => {
+      const s = JSON.stringify({ t: 'backup', state: S });
+      if (s !== lastBackup && state === 'live' && raw(s)) lastBackup = s;
+    }, ms == null ? 2000 : ms);
+  }
+  async function sendPhoto(t) {
+    if (offer) return;
+    const data = photos[t] ? await shrinkData(photos[t], TV_PHOTO_SIDE) : null;
+    send({ t: 'photo', team: t, data });
+  }
+  function sendPhotos() { sendPhoto(0); sendPhoto(1); }
+  async function applyBackup(m) {
+    if (!m.state) { toast('Nothing to resume yet.'); offer = null; paint(); return; }
+    S = Object.assign(defaultState(), m.state);
+    S.gmView = false;
+    if (S.round && S.round.fo && (S.round.fo.stage === 'armed' || S.round.fo.stage === 'countdown')) S.round.fo.stage = 'idle';
+    builtFor = -1;
+    save(); clearUndo();
+    for (let t = 0; t < 2; t++) {
+      const data = m.photos && m.photos[t];
+      if (data && !photos[t]) { try { await photoStore('readwrite', (s) => s.put(data, 'team' + t)); photos[t] = data; } catch (e) {} }
+    }
+    offer = null;
+    showPhotos(); render(); paint(); syncAll(); toast('Game resumed');
+  }
+  // Each side pings; a line that has gone quiet for 25 s is treated as dropped.
+  pingTimer = setInterval(() => {
+    if (!ws || ws.readyState !== 1) return;
+    if (Date.now() - heardAt > 25000) { try { ws.close(); } catch (e) {} if (ws) lost(); return; }
+    raw('{"t":"ping"}');
+  }, 10000);
+  window.addEventListener('online', () => { if (want && state !== 'live') { tries = Math.max(tries, 1); connect(); } });
+  function paint() {
+    $('tvCard').hidden = !available;
+    if (!available) return;
+    const on = want || state === 'live';
+    if (consoleMode() !== on) {
+      document.body.classList.toggle('console', on);
+      builtFor = -1;                                   // redraw the board in the other style
+      if (S.phase !== 'setup' && !S.setupOpen) render();
+    }
+    $('tvJoin').hidden = on; $('tvLive').hidden = !on;
+    const dot = (cls) => '<span class="tv-dot ' + cls + '"></span>';
+    if (state === 'live') $('tvState').innerHTML = dot('live') + 'On the TV: <b>' + esc(code) + '</b>';
+    else if (state === 'retry') $('tvState').innerHTML = dot('retry') + 'Reconnecting to <b>' + esc(code || '') + '</b>… the game carries on here.';
+    else if (state === 'connecting') $('tvState').innerHTML = dot('') + 'Connecting to <b>' + esc(code || '') + '</b>…';
+    $('tvHint').textContent = note || (on ? '' : 'On the TV, open ' + location.host + '/tv, then type the 4-letter code it shows.');
+    $('tvHint').hidden = !$('tvHint').textContent;
+    $('tvResume').hidden = !offer;
+    if (offer) $('tvResumeInfo').textContent = offer.teams[0] + ' ' + offer.scores[0] + ' – ' + offer.teams[1] + ' ' + offer.scores[1] + (offer.phase === 'setup' ? '' : ' · question ' + offer.question + ' of ' + offer.questions);
+    const pill = $('tvPill');
+    pill.hidden = !on;
+    pill.innerHTML = state === 'live' ? dot('live') + 'TV ' + esc(code) : dot('retry') + 'TV reconnecting';
+  }
+  return {
+    stats,
+    init() {
+      if (/\.github\.io$/.test(location.hostname)) return;   // the solo build: no relay there
+      fetch('api/info', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((j) => {
+        if (!j || !j.ff) return;
+        available = true;
+        const s = fromHash() || saved();
+        if (s) { code = s.code; key = s.key; want = true; connect(); } else paint();
+      }).catch(() => {});
+    },
+    join(text) {
+      const c = String(text || '').toUpperCase().replace(/[^A-Z]/g, '');
+      if (c.length !== 4) { note = 'Type the 4 letters shown on the TV.'; paint(); return; }
+      const s = saved();
+      code = c; key = s && s.code === c ? s.key : null; want = true; tries = 0; note = ''; connect();
+    },
+    stop() { want = false; clearTimeout(retryTimer); code = key = null; offer = null; note = ''; remember(); if (ws) { const w = ws; ws = null; w.onclose = null; try { w.close(); } catch (e) {} } state = 'off'; paint(); },
+    resume() { if (!send({ t: 'resume' })) toast('Not connected to the TV right now.'); },
+    // Called after anything on screen changes; several in one tick send one snapshot.
+    changed() {
+      if (offer && S.phase !== 'setup') { offer = null; paint(); syncAll(); }   // a new game started here instead of resuming
+      if (queued || state !== 'live') return; queued = true; queueMicrotask(() => { queued = false; publish(); backupSoon(); }); },
+    photo(t) { if (state === 'live') { sendPhoto(t); backupSoon(); } },
+    paint,
+  };
+})();
+
+// The question's Tagalog and Vietnamese lines, if the set has them.
+function trLines(q) {
+  return (q.tl ? '<div><b>TL</b>' + esc(q.tl) + '</div>' : '') + (q.vi ? '<div><b>VI</b>' + esc(q.vi) + '</div>' : '');
 }
 
 // ---------- setup screen ----------
@@ -650,6 +906,7 @@ function renderSetup() {
           '<td class="act"><button data-edit="' + i + '">Edit</button><button data-up="' + i + '"' + (i === 0 ? ' disabled' : '') + '>▲</button><button data-down="' + i + '"' + (i === S.questions.length - 1 ? ' disabled' : '') + '>▼</button><button data-del="' + i + '" class="danger">✕</button></td></tr>';
       }).join('') + '</table></div>';
   } else $('qlist').innerHTML = '';
+  TV.changed();
 }
 // ---------- undo ----------
 // Every game action saves a snapshot first; Undo puts the last one back. The list is cleared on a new question.
@@ -671,7 +928,7 @@ function undo() {
   const u = undoStack.pop(); if (!u) return;
   const d = JSON.parse(u.data);
   S.round = d.round; S.teams = d.teams; S.phase = d.phase;
-  builtFor = -1; pendingX = 0; celebrate = false; busy = false;
+  builtFor = -1; pendingX = []; celebrate = false; busy = false;
   save(); render(); renderUndo();
   toast('Undid: ' + u.label);
 }
@@ -706,12 +963,12 @@ function moveQ(i, d) {
 function exportCsv() {
   const cell = (v) => { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
   const head = ['Question']; for (let k = 1; k <= MAX; k++) head.push('Answer ' + k, 'Points ' + k);
-  head.push('Multiplier');
+  head.push('Multiplier', 'Question (Tagalog)', 'Question (Vietnamese)');
   const lines = [head.join(',')];
   S.questions.forEach((q) => {
     const r = [cell(q.q)];
     for (let k = 0; k < MAX; k++) { const a = q.answers[k]; r.push(a ? cell(a.text) : '', a ? a.points : ''); }
-    r.push(q.mult || 1);
+    r.push(q.mult || 1, cell(q.tl || ''), cell(q.vi || ''));
     lines.push(r.join(','));
   });
   const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv' });
@@ -740,6 +997,7 @@ function openEditor(i) {
   const q = i >= 0 ? S.questions[i] : null;
   $('edTitle').textContent = q ? 'Edit question ' + (i + 1) : 'Add a question';
   $('edQ').value = q ? q.q : '';
+  $('edQtl').value = q && q.tl ? q.tl : ''; $('edQvi').value = q && q.vi ? q.vi : '';
   setEdMult(q && q.mult ? q.mult : 1);
   const as = $('edRows').querySelectorAll('input.a'), ps = $('edRows').querySelectorAll('input.p');
   for (let k = 0; k < MAX; k++) {
@@ -780,6 +1038,9 @@ function saveEditor() {
   if (r.errors.length) { editorCheck(); return; }
   r.answers.sort((a, b) => b.points - a.points);   // rank order: top answer first
   const item = { q: r.q, answers: r.answers, mult: edMultVal };
+  const tl = $('edQtl').value.trim(), vi = $('edQvi').value.trim();
+  if (tl) item.tl = tl;
+  if (vi) item.vi = vi;
   if (edIndex >= 0) S.questions[edIndex] = item; else S.questions.push(item);
   closeEditor();
   questionsChanged(edIndex >= 0 ? edIndex : -1);
@@ -796,14 +1057,17 @@ function startGame() {
   S.phase = 'faceoff'; S.setupOpen = false; save(); render();
 }
 function continueGame() { readNames(); S.setupOpen = false; save(); render(); }
-function gotoSetup() { curtain(MSG_TO_GM, () => { S.setupOpen = true; S.gmView = false; save(); render(); }); }
+function gotoSetup() {
+  const go = () => { S.setupOpen = true; S.gmView = false; save(); render(); };
+  if (consoleMode()) go(); else curtain(MSG_TO_GM, go);
+}
 
 // ---------- sound ----------
 // All sounds are generated in code (Web Audio), so they work offline and need no sound files.
 const Sound = (() => {
   let ac = null, unlocked = false;
   function ctx() {
-    if (!S.sound) return null;
+    if (!S.sound || consoleMode()) return null;   // joined to a TV: the TV plays the sounds
     try {
       if (!ac) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; ac = new C(); }
       if (ac.state === 'suspended') ac.resume();
@@ -842,6 +1106,7 @@ const Sound = (() => {
     unlock,
     buzz: safe((c, team) => { const f = team === 0 ? 587 : 784; tone(c, { f, d: .4, type: 'square', v: .09, hold: true }); tone(c, { f: f * 2, d: .4, v: .05, hold: true }); }),
     early: safe((c) => tone(c, { f: 140, d: .12, type: 'square', v: .06 })),
+    tick: safe((c, go) => tone(c, go ? { f: 1046, d: .35, type: 'triangle', v: .18 } : { f: 660, d: .12, type: 'triangle', v: .12 })),
     ding: safe((c, top) => {
       const bell = (f, t) => { tone(c, { f, t, d: 1.4, v: .22 }); tone(c, { f: f * 2, t, d: .7, v: .07 }); tone(c, { f: f * 3, t, d: .35, v: .03 }); };
       bell(1318.5, 0); if (top) bell(1760, .16);
@@ -864,11 +1129,23 @@ function renderSoundBtns() { document.querySelectorAll('.btn-sound').forEach((b)
 const fast = () => !!window.__ffFast;                 // tests only: shorter pauses
 const BUZZ_HOLD_MS = () => (fast() ? 400 : 1600);     // how long the buzz winner stays lit
 const SUSPENSE_MS = () => (fast() ? 80 : 1400);       // "Survey says..." pause
-let buzzT1 = 0, toBoardTimer = null;
+const COUNT_MS = () => (fast() ? 120 : 1000);         // one beat of the 3-2-1 before the question shows
+let buzzT1 = 0, toBoardTimer = null, countTimer = null;
+// Arm: the question stays hidden while the room counts 3-2-1, then it shows and the buzzers go live.
+// A tap during the count is ignored (it flashes, like a tap before arming) so nobody can jump the gun.
 function arm() {
-  const fo = S.round.fo;
-  fo.stage = 'armed'; fo.winner = null; fo.lead = null;
-  renderFaceoff();
+  const fo = S.round.fo, round = S.round;
+  fo.stage = 'countdown'; fo.cd = 3; fo.winner = null; fo.lead = null;
+  Sound.tick(false); renderFaceoff();
+  clearInterval(countTimer);
+  countTimer = setInterval(() => {
+    if (S.round !== round || S.phase !== 'faceoff' || round.fo.stage !== 'countdown') { clearInterval(countTimer); return; }
+    round.fo.cd--;
+    if (round.fo.cd > 0) { Sound.tick(false); renderFaceoff(); return; }
+    clearInterval(countTimer);
+    round.fo.stage = 'armed'; delete round.fo.cd;
+    Sound.tick(true); renderFaceoff();
+  }, COUNT_MS());
 }
 function zoneTap(side, ts) {
   const fo = S.round.fo;
@@ -884,7 +1161,7 @@ function zoneTap(side, ts) {
   } else if (fo.stage === 'buzzed' && side !== fo.winner && fo.lead == null) {
     fo.lead = Math.max(1, Math.round(ts - buzzT1));
     save(); renderFaceoff();
-  } else if (fo.stage === 'idle') {
+  } else if (fo.stage === 'idle' || fo.stage === 'countdown') {
     const z = zoneEl(side);
     z.classList.remove('early'); void z.offsetWidth; z.classList.add('early');
     Sound.early();
@@ -895,23 +1172,32 @@ function renderFaceoff() {
   const q = cur(), fo = S.round.fo;
   const m = S.round.mult || 1;
   $('foQn').innerHTML = 'Question ' + (S.qi + 1) + ' of ' + S.questions.length + (m > 1 ? ' <span class="mbadge" style="font-size:14px;padding:2px 10px">' + (m === 2 ? 'DOUBLE' : 'TRIPLE') + ' POINTS</span>' : '');
-  $('foQ').textContent = q.q;
+  const veiled = !fo.seen && (fo.stage === 'idle' || fo.stage === 'countdown');
+  $('foQ').textContent = veiled ? 'The question shows when the buzzers go live.' : q.q;
+  $('foQ').classList.toggle('veiled', veiled);
+  $('foTr').innerHTML = veiled ? '' : trLines(q);
   $('btnArm').disabled = fo.stage !== 'idle';
-  $('btnArm').textContent = fo.stage === 'armed' ? 'Armed…' : 'Arm buzzers';
+  $('btnArm').textContent = fo.stage === 'countdown' ? 'Get ready…' : fo.stage === 'armed' ? 'Armed…' : 'Arm buzzers';
   for (let s = 0; s < 2; s++) {
     const z = zoneEl(s);
     z.querySelector('.zone-name').textContent = tname(s);
+    const big = z.querySelector('.zone-big');
+    const wasCount = z.classList.contains('count'), text = fo.stage === 'countdown' ? String(fo.cd) : 'BUZZ';
+    z.classList.toggle('count', fo.stage === 'countdown');
+    if (big.textContent !== text) { big.textContent = text; if (fo.stage === 'countdown' && wasCount) { z.classList.remove('count'); void z.offsetWidth; z.classList.add('count'); } }
     z.classList.toggle('armed', fo.stage === 'armed');
     z.classList.toggle('winner', fo.stage === 'buzzed' && fo.winner === s);
     z.querySelector('.zone-sub').textContent = fo.stage === 'buzzed' && fo.winner === s ? (fo.lead > 0 ? 'FIRST by ' + fo.lead + ' ms' : 'FIRST!') : '';
     z.querySelector('.zone-guess').innerHTML = '';
   }
   const b = $('foBottom');
-  if (fo.stage === 'idle') b.innerHTML = '<div class="fo-msg">Read the question, then tap <b>Arm buzzers</b>.</div>';
-  else if (fo.stage === 'armed') b.innerHTML = '<div class="fo-msg big">Buzzers armed — first touch wins!</div>';
+  if (fo.stage === 'idle') b.innerHTML = '<div class="fo-msg">One player from each team, hands ready. Tap <b>Arm buzzers</b> to count down and show the question.</div>';
+  else if (fo.stage === 'countdown') b.innerHTML = '<div class="fo-msg big">' + fo.cd + '…</div>';
+  else if (fo.stage === 'armed') b.innerHTML = '<div class="fo-msg big">Buzz! First touch wins.</div>';
   else b.innerHTML = '<div class="fo-msg big">' + esc(tname(fo.winner)) + ' buzzed first! Going to the board…</div>';
+  TV.changed();
 }
-function skipFaceoff() { S.round.control = null; S.round.foDone = true; S.phase = 'board'; save(); render(); }
+function skipFaceoff() { clearInterval(countTimer); S.round.control = null; S.round.foDone = true; S.phase = 'board'; save(); render(); }
 
 // ---------- checking an answer (face-off, play and steal) ----------
 // GM taps Check answer -> red cover -> picks what the player said (or X) -> green cover -> one tap plays it out.
@@ -980,7 +1266,7 @@ function playOut(c, idx) {
 function foPick(team, idx) {
   const fo = S.round.fo, q = cur();
   fo.guesses[team] = idx;
-  if (idx >= 0) reveal(idx); else queueX();
+  if (idx >= 0) reveal(idx); else queueX(1);
   const other = 1 - fo.winner;
   if (team === fo.winner) {
     if (idx === 0) decide(fo.winner);
@@ -999,19 +1285,25 @@ function foPick(team, idx) {
   }
 }
 function decide(team) { S.round.fo.stage = 'decided'; S.round.control = team; celebrate = true; }
-function redo() { S.round.fo = newRound().fo; S.phase = 'faceoff'; save(); render(); }
+function redo() { S.round.fo = newRound().fo; S.round.fo.seen = true; S.phase = 'faceoff'; save(); render(); }
 function playOrPass(pass) {
   if (pass) S.round.control = 1 - S.round.control;
+  S.round.passed = !!pass;
   S.round.foDone = true; save(); renderBoard();
 }
-function flashX() {
+const X_MS = 1500;
+let xTimer = null;
+function flashX(n) {
+  if (consoleMode()) return;
   const f = $('strikeFlash');
+  f.innerHTML = '<div class="x">✕</div>'.repeat(Math.max(1, Math.min(3, n || 1)));
   f.classList.remove('active'); void f.offsetWidth; f.classList.add('active');
-  setTimeout(() => f.classList.remove('active'), 800);
+  clearTimeout(xTimer); xTimer = setTimeout(() => f.classList.remove('active'), X_MS);
   Sound.strike();
 }
-let pendingX = 0, celebrate = false;   // effects waiting for the players' view
-function queueX() { pendingX++; }
+let pendingX = [], celebrate = false;   // effects waiting for the players' view: how many X's each flash shows
+// A strike shows as many X's as the team now has; a face-off miss or a missed steal shows one.
+function queueX(n) { pendingX.push(n || 1); tvX++; tvXn = n || 1; }
 const MSG_TO_GM = 'Turn the iPad toward you, GM. Nobody else should see the screen.';
 const MSG_TO_PLAYERS = 'Turn the iPad back toward the players.';
 let curtainNext = null;
@@ -1057,8 +1349,8 @@ function stealMissed() {
   const r = S.round;
   if (!r.steal || r.steal.result) return;
   r.steal.result = 'miss';
-  queueX();
-  awardPot(r.control, tname(r.control) + ' keeps the pot');
+  queueX(1);
+  awardPot(r.control, 'Steal missed. The pot stays with ' + tname(r.control));
   save(); renderBoard();
 }
 function revealAll() {
@@ -1071,12 +1363,12 @@ function strike() {
   if (r.strikes >= 3 || r.over || !r.foDone) return;
   r.strikes++;
   if (r.strikes === 3 && r.control != null && !r.steal) r.steal = { team: 1 - r.control, result: null };
-  queueX();
+  queueX(r.strikes);
   save(); renderBoard();
 }
 function givePot(t) {
   if (!S.round.pot || !S.round.foDone) return;
-  awardPot(t, tname(t) + ' gets the pot');
+  awardPot(t, 'The pot goes to ' + tname(t));
   save(); renderBoard();
 }
 function editScore(t) {
@@ -1095,13 +1387,14 @@ function playAgain() {
 }
 function renderEnd() {
   const a = S.teams[0].score, b = S.teams[1].score;
-  $('endWinner').textContent = a === b ? "It's a tie!" : tname(a > b ? 0 : 1) + ' wins!';
+  $('endWinner').textContent = a === b ? "It's a tie!" : 'Winner: ' + tname(a > b ? 0 : 1) + '!';
   for (let t = 0; t < 2; t++) {
     const el = document.querySelector('#end .e-team.t' + t);
     el.querySelector('.e-name').textContent = tname(t);
     el.querySelector('.e-score').textContent = S.teams[t].score;
     el.classList.toggle('won', S.teams[t].score > S.teams[1 - t].score);
   }
+  TV.changed();
 }
 function goQuestion(delta) {
   const n = S.qi + delta;
@@ -1128,7 +1421,7 @@ function buildBoard() {
     g.appendChild(el);
   }
   builtFor = S.qi;
-  pendingX = 0; celebrate = false;
+  pendingX = []; celebrate = false;
   shown = S.round.revealed.slice();      // after a reload, no replay animation
   g.classList.add('noanim');
   g.querySelectorAll('.slot').forEach((el, i) => { el.classList.toggle('flipped', shown[i]); el.classList.toggle('revealed', S.round.revealed[i]); });
@@ -1140,6 +1433,7 @@ function renderBoard() {
   $('bQn').textContent = 'Question ' + (S.qi + 1) + ' of ' + S.questions.length;
   $('bQ').textContent = S.qHidden ? '(question hidden)' : q.q;
   $('bQ').classList.toggle('hidden', S.qHidden);
+  $('bTr').innerHTML = S.qHidden ? '' : trLines(q);
   $('btnEye').textContent = S.qHidden ? 'Show' : 'Hide';
   $('btnPrev').disabled = S.qi === 0;
   const last = S.qi >= S.questions.length - 1;
@@ -1149,11 +1443,18 @@ function renderBoard() {
   $('potLbl').textContent = (r.mult || 1) > 1 ? 'POT ×' + r.mult : 'POT';
   document.querySelectorAll('.mult button').forEach((b) => { b.classList.toggle('on', Number(b.dataset.mult) === (r.mult || 1)); b.disabled = r.over; });
   document.querySelectorAll('.sbox').forEach((b, i) => b.classList.toggle('on', i < r.strikes));
-  $('btnStrike').disabled = r.strikes >= 3 || r.over || !r.foDone;
+  if (consoleMode()) {
+    const c = busy ? null : guessContext();
+    $('btnStrike').disabled = !c;
+    $('btnStrike').textContent = !c ? '✗' : c.kind === 'fo' ? '✗ Not on board' : c.kind === 'steal' ? '✗ Steal missed' : '✗ Strike';
+  } else {
+    $('btnStrike').disabled = r.strikes >= 3 || r.over || !r.foDone;
+    $('btnStrike').textContent = 'STRIKE';
+  }
   $('btnRevealAll').disabled = !r.foDone && !r.over;
   document.querySelectorAll('.give').forEach((b) => { b.disabled = !r.foDone; });
   const st = $('bStatus'), stealing = r.steal && !r.steal.result;
-  const checkBtn = '<button class="primary" data-act="check">Check answer</button>';
+  const checkBtn = consoleMode() ? '<span class="hint">Tap the answer they gave, or ✗</span>' : '<button class="primary" data-act="check">Check answer</button>';
   let guessing = null;
   if (busy) {
     st.className = 'b-status survey';
@@ -1176,11 +1477,13 @@ function renderBoard() {
   } else if (stealing) {
     guessing = r.steal.team;
     st.className = 'b-status steal';
-    st.innerHTML = '<span>' + esc(tname(r.steal.team)) + ' can steal! One guess.</span>' + checkBtn + '<button class="small" id="btnStealMiss" data-act="stealmiss">Steal missed</button>';
+    st.innerHTML = '<span>' + esc(tname(r.steal.team)) + ' can steal! One guess.</span>' + checkBtn + (consoleMode() ? '' : '<button class="small" id="btnStealMiss" data-act="stealmiss">Steal missed</button>');
   } else if (r.over) {
     st.className = 'b-status over';
     const lastQ = S.qi >= S.questions.length - 1;
-    st.innerHTML = '<span>' + esc(r.msg) + '</span><button class="small primary" id="btnBannerNext" data-act="next">' + (lastQ ? 'Finish game' : 'Next question ▶') + '</button>';
+    const left = q.answers.some((a, i) => !r.revealed[i]);
+    st.innerHTML = '<span>' + esc(r.msg) + '</span>' + (left ? '<button class="small" data-act="revealall">Show the rest</button>' : '') +
+      '<button class="small primary" id="btnBannerNext" data-act="next">' + (lastQ ? 'Finish game' : 'Next question ▶') + '</button>';
   } else {
     guessing = r.control;
     st.className = 'b-status play';
@@ -1201,8 +1504,9 @@ function renderBoard() {
   $('gmToggle').textContent = S.gmView ? 'Player view' : 'GM view';
   const slots = g.querySelectorAll('.slot');
   slots.forEach((el, i) => el.classList.toggle('revealed', r.revealed[i]));
-  if (S.gmView) {
+  if (S.gmView || consoleMode()) {
     g.classList.add('gm');
+    if (consoleMode()) { shown = r.revealed.slice(); pendingX = []; celebrate = false; }
   } else {
     // Leaving GM view (or normal play): snap known-flipped slots, then animate the ones players haven't seen.
     if (g.classList.contains('gm')) {
@@ -1222,19 +1526,20 @@ function renderBoard() {
       }
     });
     let t = k ? 120 + k * 450 + 250 : 0;
-    if (pendingX > 0) {
-      for (let j = 0; j < pendingX; j++) setTimeout(flashX, t + j * 950);
-      t += pendingX * 950; pendingX = 0;
+    if (pendingX.length) {
+      pendingX.forEach((n, j) => setTimeout(() => flashX(n), t + j * (X_MS + 150)));
+      t += pendingX.length * (X_MS + 150); pendingX = [];
     }
     if (celebrate) { celebrate = false; setTimeout(() => Sound.fanfare(), t + 150); }
   }
+  TV.changed();
 }
 
 // ---------- top-level render ----------
 function render() {
   document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
   const onBoard = S.phase === 'board' && !S.setupOpen;
-  $('gmToggle').style.display = onBoard ? 'block' : 'none';
+  $('gmToggle').style.display = onBoard && !consoleMode() ? 'block' : 'none';
   if (!onBoard) document.body.classList.remove('gm');
   closeGm(); hideCurtain(); renderSoundBtns();
   if (S.phase === 'setup' || S.setupOpen) { $('setup').classList.add('active'); renderSetup(); }
@@ -1286,11 +1591,24 @@ $('curtain').addEventListener('click', () => { const n = curtainNext; hideCurtai
 
 $('grid').addEventListener('click', (e) => {
   const el = e.target.closest('.slot'); if (!el || el.classList.contains('empty')) return;
+  if (consoleMode()) {
+    // The GM sees every answer; a tap says "that's what they said". Face-off, play and steal are
+    // ruled exactly as Check answer would, with "Survey says…" on the TV. After the round it just shows it.
+    const i = Number(el.dataset.i);
+    if (busy || S.round.revealed[i]) return;
+    const c = guessContext();
+    if (c) playOut(c, i);
+    else if (doAction(ansLabel(i), () => reveal(i))) renderBoard();
+    return;
+  }
   if (!S.round.foDone || busy) return;   // face-off answers go through Check answer
   const i = Number(el.dataset.i);
   if (doAction(ansLabel(i), () => reveal(i))) renderBoard();
 });
-$('btnStrike').addEventListener('click', () => doAction('Strike', strike));
+$('btnStrike').addEventListener('click', () => {
+  if (!consoleMode()) { doAction('Strike', strike); return; }
+  const c = guessContext(); if (c && !busy) playOut(c, -1);   // the TV gets "Survey says…" then the X
+});
 $('btnUndo').addEventListener('click', undo);
 document.querySelectorAll('.mult button').forEach((b) => b.addEventListener('click', () => doAction('×' + b.dataset.mult, () => setMult(Number(b.dataset.mult)))));
 $('bStatus').addEventListener('click', (e) => {
@@ -1302,6 +1620,7 @@ $('bStatus').addEventListener('click', (e) => {
   else if (act === 'redo') redo();
   else if (act === 'stealmiss') doAction('Steal missed', stealMissed);
   else if (act === 'next') goQuestion(1);
+  else if (act === 'revealall') doAction('Reveal all', revealAll);
 });
 $('btnRevealAll').addEventListener('click', () => doAction('Reveal all', revealAll));
 $('btnBoardSetup').addEventListener('click', gotoSetup);
@@ -1313,6 +1632,10 @@ $('btnEndSetup').addEventListener('click', gotoSetup);
 $('gmToggle').addEventListener('click', toggleGm);
 document.querySelectorAll('.give').forEach((b) => b.addEventListener('click', () => doAction('Give pot', () => givePot(Number(b.dataset.give)))));
 document.querySelectorAll('.tscore').forEach((b) => b.addEventListener('click', () => doAction('Score edit', () => editScore(Number(b.dataset.t)))));
+$('btnTvJoin').addEventListener('click', () => TV.join($('tvCode').value));
+$('tvCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') TV.join($('tvCode').value); });
+$('btnTvStop').addEventListener('click', () => TV.stop());
+$('btnTvResume').addEventListener('click', () => TV.resume());
 document.querySelectorAll('[data-photo-pick]').forEach((b) => b.addEventListener('click', () => document.querySelector('[data-photo-input="' + b.dataset.photoPick + '"]').click()));
 document.querySelectorAll('[data-photo-remove]').forEach((b) => b.addEventListener('click', () => removePhoto(Number(b.dataset.photoRemove))));
 document.querySelectorAll('[data-photo-input]').forEach((inp) => inp.addEventListener('change', () => {
@@ -1324,8 +1647,10 @@ document.querySelectorAll('[data-photo-input]').forEach((inp) => inp.addEventLis
 // ---------- boot ----------
 buildEditor();
 const hadSave = load();
+const bootHadSave = hadSave;
 render();
 loadPhotos();
+TV.init();
 if (!hadSave) loadBuiltIn(0, true);   // first launch on this device: start with the game-night set
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});

@@ -8,6 +8,8 @@ No server, no login. Once loaded it works offline.
 | File | What it is |
 |---|---|
 | `index.html` | The whole app: screens, styles, game logic |
+| `tv.html` | The TV screen for TV mode: read-only, big type |
+| `server/`, `shared/room.js` | The TV relay (Node) and its room logic; see TV mode |
 | `xlsx.mini.min.js` | SheetJS, reads `.xlsx` and `.csv` files in the browser (Apache-2.0, see `LICENSE-sheetjs.txt`) |
 | `sw.js` | Service worker: keeps a copy of the app; uses the network when it can, the saved copy when offline |
 | `manifest.webmanifest` | Lets Safari "Add to Home Screen" as a full-screen app |
@@ -36,6 +38,34 @@ Then on the iPad:
 3. From then on it opens offline. Your questions, team names and scores are kept on the iPad.
 
 Opening `index.html` straight from the Files app does not work well in Safari, so use a URL.
+
+## TV mode
+
+The TV shows the board while the GM runs the game from the iPad, Jackbox-style. It works at **https://ff.eventurelog.ca**, which a small relay on the host PC serves through a Cloudflare tunnel. The github.io copy stays the solo version with no TV.
+
+1. On the TV's browser (a laptop on HDMI with Chrome full screen is best), open **ff.eventurelog.ca/tv**. It shows a 4-letter game code. Click the screen once to turn on sound.
+2. On the iPad, open **ff.eventurelog.ca**. Under **📺 TV**, type the code and tap **Connect**. That iPad is now the game master, and only it can drive this game.
+3. Play as usual. The TV shows the question, the face-off (who buzzed first), the board, strikes, the pot, scores and team photos, with the same sounds.
+
+What to know:
+
+- **The iPad is the whole game.** The TV only mirrors it. Answers reach the TV only once they're revealed, never the GM's list.
+- **If the internet drops,** the game carries on on the iPad and the TV says *Waiting for the iPad…*. When the line is back, the TV catches up by itself. Reloading the TV keeps the same code.
+- **Resume:** the room keeps a copy of the game. If the iPad reloads or loses its storage, open the iPad's game link again (it carries the code), and **Resume game** brings back the questions, scores and photos.
+- **Photos** go to the TV once, shrunk to 256 pixels. They're held only in the room while it lasts, which is 12 hours after it was last used.
+- Several games can run at once, each with its own code.
+
+Running the relay (on the PC the tunnel points at):
+
+```
+cd server
+npm install
+npm start          # http://127.0.0.1:8090, local only; the tunnel brings ff.eventurelog.ca here
+npm test           # room logic
+npm run e2e        # two browsers: a full round, a dropped line, Resume, two rooms (needs Chrome)
+```
+
+It listens on 127.0.0.1 only, so nothing on the local network can reach it and Windows doesn't ask about the firewall. Rooms live in memory, so restarting the relay means a new code on the TV. The room logic (`shared/room.js`) has no networking in it, so a Cloudflare Worker could reuse it later.
 
 ## Team photos
 

@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Family Feud · TV</title>
+<link rel="icon" href="data:,">
+<style>
+/* The TV: read-only, big type, 16:9. Same colours as the iPad. */
+:root {
+  --bg: #0f172a; --panel: #1e293b; --text: #f8fafc; --muted: #94a3b8; --gold: #fbbf24; --green: #22c55e; --red: #ef4444;
+  --a: #2563eb; --a-dark: #1e40af; --b: #ea580c; --b-dark: #9a3412;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); overflow: hidden; cursor: default;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+.screen { display: none; position: fixed; inset: 0; flex-direction: column; }
+.screen.active { display: flex; }
+.photo { border-radius: 50%; object-fit: cover; background: #0b1220; box-shadow: 0 0 0 .3vh rgba(255,255,255,.65); flex: none; }
+.photo[hidden] { display: none; }
+
+/* ---- waiting for an iPad ---- */
+#wait { align-items: center; justify-content: center; gap: 3vh; text-align: center; padding: 4vh; }
+#wait .title { font-size: 6vh; font-weight: 900; color: var(--gold); letter-spacing: .02em; }
+#wait .code { font-size: 26vh; font-weight: 900; letter-spacing: .12em; line-height: 1; padding: 2vh 6vh; border-radius: 4vh;
+  background: var(--panel); box-shadow: 0 0 0 1vh #334155; font-variant-numeric: tabular-nums; }
+#wait .how { font-size: 4vh; color: var(--muted); max-width: 70vw; line-height: 1.35; }
+#wait .how b { color: var(--text); }
+#wait .ready { font-size: 4.5vh; font-weight: 800; color: var(--green); }
+#wait .teams { display: flex; gap: 6vw; align-items: center; font-size: 5vh; font-weight: 800; }
+#wait .teams div { display: flex; align-items: center; gap: 2vh; }
+#wait .teams .photo { width: 12vh; height: 12vh; }
+
+/* ---- face-off ---- */
+#faceoff { padding: 2vh; gap: 2vh; }
+.f-top, .b-top { text-align: center; }
+.qn { color: var(--muted); font-size: 2.6vh; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.qn .mult { color: #1c1917; background: var(--gold); border-radius: 1vh; padding: .2vh 1.2vh; margin-left: 1.2vh; }
+.q { font-size: 6vh; font-weight: 800; line-height: 1.15; text-wrap: balance; }
+.q.hidden { color: var(--muted); font-style: italic; font-weight: 600; }
+/* Tagalog and Vietnamese under the English question: smaller, each with a small label. */
+.tr { display: grid; gap: .3vh; margin-top: .6vh; }
+.tr:empty { display: none; }
+.tr div { font-size: 3.1vh; font-weight: 700; color: #cbd5e1; line-height: 1.2; text-wrap: balance; }
+.tr b { display: inline-block; font-size: 1.7vh; font-weight: 800; letter-spacing: .1em; color: var(--muted);
+  border: .2vh solid #475569; border-radius: .6vh; padding: 0 .8vh; margin-right: 1vh; vertical-align: .5vh; }
+.has-tr .q { font-size: 5vh; }
+.f-zones { flex: 1; display: flex; gap: 2vh; min-height: 0; }
+.zone { flex: 1; border-radius: 3vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vh;
+  filter: brightness(.5); transition: filter .15s, box-shadow .15s; }
+.zone.t0 { background: var(--a-dark); } .zone.t1 { background: var(--b-dark); }
+.zone .photo { width: 22vh; height: 22vh; }
+.zone .name { font-size: 7vh; font-weight: 900; text-transform: uppercase; letter-spacing: .03em; text-align: center; padding: 0 2vh; }
+.zone .big { font-size: 13vh; font-weight: 900; letter-spacing: .05em; line-height: 1; min-height: 1em; }
+.zone .sub { font-size: 4vh; font-weight: 800; color: var(--gold); min-height: 1.2em; }
+.zone.armed { filter: brightness(1); }
+.zone.armed.t0 { background: var(--a); } .zone.armed.t1 { background: var(--b); }
+.zone.armed .big { animation: pulse .5s ease-in-out infinite alternate; }
+.zone.winner { filter: brightness(1.1); box-shadow: 0 0 0 1.2vh var(--gold) inset, 0 0 8vh rgba(251,191,36,.6); }
+.zone.winner.t0 { background: var(--a); } .zone.winner.t1 { background: var(--b); }
+.zone.count { filter: brightness(1); }
+.zone.count .big { color: var(--gold); font-size: 22vh; animation: countpop .9s ease-out; }
+@keyframes countpop { 0% { transform: scale(1.6); opacity: 0; } 25% { transform: scale(1); opacity: 1; } 100% { opacity: 1; } }
+.q.veiled { color: var(--muted); font-style: italic; font-weight: 700; }
+.q.reveal { animation: qreveal .6s ease-out; }
+@keyframes qreveal { 0% { opacity: 0; transform: translateY(2vh); } 100% { opacity: 1; transform: none; } }
+.f-msg { text-align: center; font-size: 4.5vh; font-weight: 800; color: var(--gold); min-height: 6vh; }
+
+/* ---- board ---- */
+#board { padding: 1.6vh; gap: 1.4vh; }
+.status { display: flex; align-items: center; justify-content: center; min-height: 7vh; border-radius: 1.6vh; font-size: 4.2vh; font-weight: 900; padding: .6vh 2vh; text-align: center; }
+.status.fo { background: #1e3a8a; } .status.play { background: var(--panel); } .status.steal { background: #7f1d1d; }
+.status.over { background: #713f12; color: var(--gold); } .status.survey { background: #0b1220; color: var(--gold); }
+.status.survey span { animation: pulse .6s ease-in-out infinite alternate; font-size: 5vh; }
+.b-main { flex: 1; display: flex; gap: 1.6vh; min-height: 0; }
+.grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(4, 1fr); grid-auto-flow: column; gap: 1.4vh; min-height: 0; }
+.slot { perspective: 1400px; min-height: 0; }
+.slot .inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .7s cubic-bezier(.4,0,.2,1); }
+.slot.flipped .inner { transform: rotateY(180deg); }
+.grid.noanim .inner { transition: none !important; }
+.face { position: absolute; inset: 0; border-radius: 1.8vh; display: flex; align-items: center; justify-content: center; backface-visibility: hidden; -webkit-backface-visibility: hidden; font-weight: 900; overflow: hidden; }
+.front { background: linear-gradient(180deg, #1d4ed8, #1e3a8a); border: .5vh solid #3b82f6; font-size: 7vh; }
+.front span { background: #0b1220; border-radius: 50%; width: 1.5em; height: 1.5em; display: flex; align-items: center; justify-content: center; }
+.back { background: linear-gradient(180deg, #fde68a, #f59e0b); color: #1c1917; transform: rotateY(180deg); padding: 0 2.2vh; justify-content: space-between; gap: 1.6vh; }
+.back .ans { font-size: 5vh; text-transform: uppercase; line-height: 1.05; flex: 1; }
+.back .pts { font-size: 6vh; background: #1c1917; color: var(--gold); border-radius: 1.4vh; padding: .4vh 1.8vh; min-width: 2.2em; text-align: center; }
+.slot.empty .inner { transform: none !important; }
+.slot.empty .front { background: #111827; border-color: #1f2937; }
+.slot.empty .front span { display: none; }
+.slot.pop { z-index: 2; animation: slotpop 1s ease-out; }
+@keyframes slotpop { 0% { transform: scale(1); } 45% { transform: scale(1.06); filter: drop-shadow(0 0 3vh rgba(251,191,36,.95)); } 100% { transform: scale(1); } }
+.side { width: 24vh; display: flex; flex-direction: column; gap: 1.4vh; }
+.pot { background: var(--panel); border-radius: 2vh; padding: 1.4vh; text-align: center; }
+.pot .lbl { color: var(--muted); font-size: 2.6vh; font-weight: 800; letter-spacing: .1em; }
+.pot .num { font-size: 10vh; font-weight: 900; color: var(--gold); line-height: 1; font-variant-numeric: tabular-nums; }
+.strikes { display: flex; gap: 1vh; }
+.sbox { flex: 1 1 0; min-width: 0; height: 8vh; border-radius: 1.4vh; background: var(--panel); display: flex; align-items: center; justify-content: center; font-size: 6vh; font-weight: 900; color: #334155; }
+.sbox.on { background: var(--red); color: #fff; }
+.teams { display: flex; gap: 1.6vh; }
+.team { flex: 1; border-radius: 2vh; padding: 1.2vh 2vh; display: flex; align-items: center; gap: 2vh; min-width: 0; }
+.team.t0 { background: var(--a-dark); } .team.t1 { background: var(--b-dark); }
+.team.control { box-shadow: 0 0 0 .7vh var(--gold); }
+.team.steal { box-shadow: 0 0 0 .7vh var(--red); animation: stealpulse 1s infinite alternate; }
+@keyframes stealpulse { from { box-shadow: 0 0 0 .7vh var(--red); } to { box-shadow: 0 0 0 .7vh var(--red), 0 0 5vh var(--red); } }
+.team .photo { width: 9vh; height: 9vh; }
+.team .name { flex: 1; min-width: 0; font-size: 4.6vh; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.team .score { font-size: 7vh; font-weight: 900; background: rgba(0,0,0,.3); border-radius: 1.4vh; padding: 0 2vh; min-width: 12vh; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* ---- end ---- */
+#end { align-items: center; justify-content: center; gap: 4vh; text-align: center; }
+#end .title { font-size: 4vh; color: var(--muted); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+#end .winner { font-size: 12vh; font-weight: 900; color: var(--gold); line-height: 1.05; }
+#end .scores { display: flex; gap: 4vh; }
+#end .eteam { border-radius: 3vh; padding: 3vh 6vh; min-width: 36vh; display: flex; flex-direction: column; align-items: center; gap: 1.4vh; }
+#end .eteam.t0 { background: var(--a-dark); } #end .eteam.t1 { background: var(--b-dark); }
+#end .eteam.won { box-shadow: 0 0 0 1vh var(--gold); }
+#end .eteam .photo { width: 16vh; height: 16vh; }
+#end .eteam .n { font-size: 5vh; font-weight: 900; }
+#end .eteam .s { font-size: 11vh; font-weight: 900; line-height: 1; }
+
+/* ---- overlays ---- */
+/* The show's strike: one, two or three big red X's for about 1.5 s. */
+#flash { display: none; position: fixed; inset: 0; z-index: 40; align-items: center; justify-content: center; gap: 4vh; pointer-events: none; background: rgba(0,0,0,.55); }
+#flash.on { display: flex; animation: strikepop 1.5s ease-out forwards; }
+#flash .x { width: 46vh; height: 46vh; border: 1.4vh solid var(--red); border-radius: 4vh; background: rgba(127,29,29,.55);
+  display: flex; align-items: center; justify-content: center; font-size: 44vh; font-weight: 900; color: var(--red); line-height: 1;
+  text-shadow: 0 0 8vh rgba(239,68,68,.9); box-shadow: 0 0 10vh rgba(239,68,68,.6), inset 0 0 6vh rgba(239,68,68,.35); }
+#flash.n3 .x { width: 40vh; height: 40vh; font-size: 38vh; }
+@keyframes strikepop { 0% { opacity: 0; transform: scale(.6); } 10% { opacity: 1; transform: scale(1.06); } 20% { transform: scale(1); } 85% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes pulse { from { opacity: .55; transform: scale(.97); } to { opacity: 1; transform: scale(1.03); } }
+#tag { position: fixed; top: 1.6vh; right: 1.6vh; z-index: 30; font-size: 2.2vh; font-weight: 800; padding: .8vh 1.6vh; border-radius: 1vh;
+  background: rgba(11,18,32,.88); color: var(--gold); display: none; }
+#tag.on { display: block; animation: pulse .8s ease-in-out infinite alternate; }
+#corner { position: fixed; left: 1.6vh; top: 1.2vh; z-index: 30; font-size: 2vh; color: #475569; font-weight: 800; letter-spacing: .12em; }
+#soundHint { font-size: 2.6vh; font-weight: 700; border: .3vh solid #334155; border-radius: 1.4vh; padding: 1.2vh 2.4vh; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<section id="wait" class="screen active">
+  <div class="title">Family Feud</div>
+  <div class="code" id="wCode">····</div>
+  <div class="how" id="wHow">Getting a game code…</div>
+  <div class="ready" id="wReady" hidden></div>
+  <div class="teams" id="wTeams" hidden>
+    <div><img class="photo" data-photo="0" alt="" hidden><span data-name="0"></span></div>
+    <div><img class="photo" data-photo="1" alt="" hidden><span data-name="1"></span></div>
+  </div>
+  <div id="soundHint">Click anywhere on this screen to turn on sound</div>
+</section>
+
+<section id="faceoff" class="screen">
+  <div class="f-top"><div class="qn" id="fQn"></div><div class="q" id="fQ"></div><div class="tr" id="fTr"></div></div>
+  <div class="f-zones">
+    <div class="zone t0"><img class="photo" data-photo="0" alt="" hidden><div class="name" data-name="0"></div><div class="big"></div><div class="sub"></div></div>
+    <div class="zone t1"><img class="photo" data-photo="1" alt="" hidden><div class="name" data-name="1"></div><div class="big"></div><div class="sub"></div></div>
+  </div>
+  <div class="f-msg" id="fMsg"></div>
+</section>
+
+<section id="board" class="screen">
+  <div class="b-top"><div class="qn" id="bQn"></div><div class="q" id="bQ"></div><div class="tr" id="bTr"></div></div>
+  <div class="status" id="bStatus"></div>
+  <div class="b-main">
+    <div class="grid" id="grid"></div>
+    <div class="side">
+      <div class="pot"><div class="lbl" id="potLbl">POT</div><div class="num" id="pot">0</div></div>
+      <div class="strikes"><div class="sbox">✕</div><div class="sbox">✕</div><div class="sbox">✕</div></div>
+    </div>
+  </div>
+  <div class="teams">
+    <div class="team t0"><img class="photo" data-photo="0" alt="" hidden><div class="name" data-name="0"></div><div class="score" data-score="0">0</div></div>
+    <div class="team t1"><img class="photo" data-photo="1" alt="" hidden><div class="name" data-name="1"></div><div class="score" data-score="1">0</div></div>
+  </div>
+</section>
+
+<section id="end" class="screen">
+  <div class="title">Final score</div>
+  <div class="winner" id="eWinner"></div>
+  <div class="scores">
+    <div class="eteam t0"><img class="photo" data-photo="0" alt="" hidden><div class="n" data-name="0"></div><div class="s" data-score="0"></div></div>
+    <div class="eteam t1"><img class="photo" data-photo="1" alt="" hidden><div class="n" data-name="1"></div><div class="s" data-score="1"></div></div>
+  </div>
+</section>
+
+<div id="flash"></div>
+<div id="tag"></div>
+<div id="corner"></div>
+
+<script>
+(function () {
+'use strict';
+// The TV only shows what the iPad sends: it never knows an answer before it's revealed.
+// It makes a room, shows the code, and redraws from each snapshot. Sounds and flips play
+// for changes between two snapshots it saw in a row, so a reconnect never replays them.
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const MAX = 8;
+let code = null, ws = null, live = false, hostOnline = false, view = null, prev = null, tries = 0, heardAt = 0, everHost = false;
+let builtFor = null;
+const photos = [null, null];
+
+// ---------- sound (a click on the TV unlocks it) ----------
+const Sound = (() => {
+  let ac = null;
+  const ctx = () => { try { if (!ac) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; ac = new C(); } if (ac.state === 'suspended') ac.resume(); return ac; } catch (e) { return null; } };
+  function tone(c, o) {
+    const t0 = c.currentTime + (o.t || 0), d = o.d || .3, v = o.v || .2, osc = c.createOscillator(), g = c.createGain();
+    osc.type = o.type || 'sine'; osc.frequency.setValueAtTime(o.f, t0);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(v, t0 + .005);
+    if (o.hold) g.gain.setValueAtTime(v, t0 + d - .06);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+    osc.connect(g); g.connect(c.destination); osc.start(t0); osc.stop(t0 + d + .05);
+  }
+  function hit(c, t, d, v) {
+    const len = Math.max(1, Math.floor(c.sampleRate * d)), buf = c.createBuffer(1, len, c.sampleRate), data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    const src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(), t0 = c.currentTime + t;
+    f.type = 'highpass'; f.frequency.value = 1200; src.buffer = buf;
+    g.gain.setValueAtTime(v, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+    src.connect(f); f.connect(g); g.connect(c.destination); src.start(t0);
+  }
+  const safe = (fn) => (...a) => { const c = ctx(); if (!c || c.state !== 'running') return; try { fn(c, ...a); } catch (e) {} };
+  return {
+    unlock() { const c = ctx(); if (c && c.resume) c.resume().then(() => { $('soundHint').hidden = true; }).catch(() => {}); },
+    buzz: safe((c, t) => { const f = t === 0 ? 587 : 784; tone(c, { f, d: .4, type: 'square', v: .09, hold: true }); tone(c, { f: f * 2, d: .4, v: .05, hold: true }); }),
+    ding: safe((c, top) => { const bell = (f, t) => { tone(c, { f, t, d: 1.4, v: .22 }); tone(c, { f: f * 2, t, d: .7, v: .07 }); tone(c, { f: f * 3, t, d: .35, v: .03 }); }; bell(1318.5, 0); if (top) bell(1760, .16); }),
+    tick: safe((c, go) => tone(c, go ? { f: 1046, d: .35, type: 'triangle', v: .18 } : { f: 660, d: .12, type: 'triangle', v: .12 })),
+    strike: safe((c) => { tone(c, { f: 118, d: .9, type: 'sawtooth', v: .16, hold: true }); tone(c, { f: 124, d: .9, type: 'square', v: .08, hold: true }); }),
+    roll: safe((c) => { for (let t = 0; t < 1.4; t += .045) hit(c, t, .05, .03 + .22 * (t / 1.4)); }),
+    fanfare: safe((c) => { [523, 659, 784, 1047].forEach((f, i) => tone(c, { f, t: i * .12, d: i === 3 ? .7 : .22, type: 'triangle', v: .16 })); }),
+    win: safe((c) => { const n = [523, 659, 784, 1047, 784, 1047, 1319]; n.forEach((f, i) => tone(c, { f, t: i * .14, d: i === n.length - 1 ? 1.2 : .25, type: 'triangle', v: .16 })); }),
+  };
+})();
+['pointerdown', 'keydown'].forEach((e) => document.addEventListener(e, () => Sound.unlock(), true));
+
+// ---------- the room ----------
+async function newRoom() {
+  try {
+    const r = await fetch('/api/rooms', { method: 'POST' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    code = (await r.json()).code;
+    history.replaceState(null, '', '/tv#' + code);
+    view = prev = null; everHost = false;
+    connect();
+  } catch (e) {
+    $('wHow').textContent = 'Can’t reach the game server. Trying again…';
+    setTimeout(newRoom, 3000);
+  }
+}
+function connect() {
+  if (ws) { ws.onclose = null; try { ws.close(); } catch (e) {} }
+  const sock = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
+  ws = sock; heardAt = Date.now();
+  sock.onopen = () => sock.send(JSON.stringify({ t: 'tv', code }));
+  sock.onmessage = (e) => { heardAt = Date.now(); let m; try { m = JSON.parse(e.data); } catch (x) { return; } onMessage(m); };
+  sock.onclose = () => {
+    if (ws !== sock) return;
+    ws = null; live = false; tag();
+    tries++; setTimeout(connect, Math.min(10000, 700 * 2 ** Math.min(tries, 4)));
+  };
+}
+function onMessage(m) {
+  if (m.t === 'joined') {
+    live = true; tries = 0; hostOnline = m.hostOnline; everHost = everHost || hostOnline;
+    photos[0] = m.photos[0]; photos[1] = m.photos[1];
+    prev = null;                 // a fresh start: draw it, don't animate it
+    view = m.view; draw(); return;
+  }
+  if (m.t === 'error' && m.reason === 'nocode') { if (ws) { ws.onclose = null; ws.close(); ws = null; } newRoom(); return; }
+  if (m.t === 'host') { hostOnline = m.online; everHost = everHost || m.online; draw(); return; }
+  if (m.t === 'photo') { photos[m.team] = m.data; showPhotos(); return; }
+  if (m.t === 'view') { prev = view; view = m.view; draw(); }
+}
+setInterval(() => {
+  if (!ws || ws.readyState !== 1) return;
+  if (Date.now() - heardAt > 25000) { ws.close(); return; }
+  ws.send('{"t":"ping"}');
+}, 10000);
+
+// ---------- drawing ----------
+const tname = (t) => (view && view.teams && view.teams[t] && view.teams[t].name) || (t ? 'Team B' : 'Team A');
+// The question in Tagalog and Vietnamese, under the English, once it shows. Answers stay English.
+function trLines(v) {
+  return (v.tl ? '<div><b>TAGALOG</b>' + esc(v.tl) + '</div>' : '') + (v.vi ? '<div><b>TIẾNG VIỆT</b>' + esc(v.vi) + '</div>' : '');
+}
+function setTr(id, v) {
+  const el = $(id), html = v.q == null ? '' : trLines(v);
+  if (el.innerHTML !== html) el.innerHTML = html;
+  el.parentElement.classList.toggle('has-tr', !!html);
+}
+function show(id) { document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === id)); }
+function showPhotos() {
+  document.querySelectorAll('img[data-photo]').forEach((img) => {
+    const p = photos[Number(img.dataset.photo)];
+    img.hidden = !p; if (p) img.src = p; else img.removeAttribute('src');
+  });
+}
+function tag() {
+  const t = $('tag');
+  const msg = !live ? 'Reconnecting…' : (everHost && !hostOnline ? 'Waiting for the iPad…' : '');
+  t.textContent = msg; t.classList.toggle('on', !!msg);
+  $('corner').textContent = code && view && view.phase !== 'setup' ? code : '';
+}
+function names() {
+  document.querySelectorAll('[data-name]').forEach((el) => { el.textContent = tname(Number(el.dataset.name)); });
+  document.querySelectorAll('[data-score]').forEach((el) => { el.textContent = view && view.teams ? view.teams[Number(el.dataset.score)].score : 0; });
+}
+function draw() {
+  tag(); showPhotos();
+  const v = view;
+  if (!v || v.phase === 'setup') {
+    show('wait');
+    $('wCode').textContent = code || '····';
+    $('wHow').innerHTML = hostOnline
+      ? 'The game master is setting up the game.'
+      : 'On the iPad, open <b>' + esc(location.host) + '</b> and type this code.';
+    $('wReady').hidden = !hostOnline; $('wReady').textContent = hostOnline ? 'iPad connected ✓' : '';
+    $('wTeams').hidden = !(hostOnline && v);
+    names(); return;
+  }
+  names();
+  if (v.phase === 'end') {
+    show('end');
+    const a = v.teams[0].score, b = v.teams[1].score;
+    $('eWinner').textContent = a === b ? 'It’s a tie!' : 'Winner: ' + tname(a > b ? 0 : 1) + '!';
+    document.querySelectorAll('#end .eteam').forEach((el, t) => el.classList.toggle('won', v.teams[t].score > v.teams[1 - t].score));
+    if (prev && prev.phase !== 'end') Sound.win();
+    return;
+  }
+  const qn = 'Question ' + v.qn + ' of ' + v.qs + (v.mult > 1 ? '<span class="mult">' + (v.mult === 2 ? 'DOUBLE' : 'TRIPLE') + ' POINTS</span>' : '');
+  if (v.phase === 'faceoff') { drawFaceoff(v, qn); return; }
+  drawBoard(v, qn);
+}
+function drawFaceoff(v, qn) {
+  show('faceoff');
+  $('fQn').innerHTML = qn;
+  const fo = v.fo, fq = $('fQ');
+  // The question stays veiled until the count ends; then it slides in as the buzzers go live.
+  const wasVeiled = fq.classList.contains('veiled');
+  fq.textContent = v.veiled ? (fo.stage === 'countdown' ? 'Get ready…' : 'Face-off') : v.q == null ? '(question hidden)' : v.q;
+  fq.classList.toggle('veiled', !!v.veiled); fq.classList.toggle('hidden', !v.veiled && v.q == null);
+  setTr('fTr', v);
+  if (wasVeiled && !v.veiled) { for (const el of [fq, $('fTr')]) { el.classList.remove('reveal'); void el.offsetWidth; el.classList.add('reveal'); } }
+  document.querySelectorAll('.zone').forEach((z, s) => {
+    const big = z.querySelector('.big');
+    const text = fo.stage === 'countdown' ? String(fo.cd) : fo.stage === 'armed' ? 'BUZZ!' : fo.stage === 'buzzed' && fo.winner === s ? 'FIRST!' : '';
+    z.classList.toggle('count', fo.stage === 'countdown');
+    if (fo.stage === 'countdown' && big.textContent !== text) { big.textContent = text; z.classList.remove('count'); void z.offsetWidth; z.classList.add('count'); }
+    z.classList.toggle('armed', fo.stage === 'armed');
+    z.classList.toggle('winner', fo.stage === 'buzzed' && fo.winner === s);
+    big.textContent = text;
+    z.querySelector('.sub').textContent = fo.stage === 'buzzed' && fo.winner === s && fo.lead > 0 ? 'by ' + fo.lead + ' ms' : '';
+  });
+  $('fMsg').textContent = fo.stage === 'armed' ? 'Buzz! First touch wins.' : fo.stage === 'buzzed' ? tname(fo.winner) + ' buzzed first!'
+    : fo.stage === 'countdown' ? (v.veiled ? 'The question shows on 1…' : 'Buzzers go live on 1…') : 'One player from each team to the buzzers';
+  if (prev && prev.phase === 'faceoff' && prev.fo) {
+    if (fo.stage === 'countdown' && (prev.fo.stage !== 'countdown' || prev.fo.cd !== fo.cd)) Sound.tick(false);
+    if (fo.stage === 'armed' && prev.fo.stage === 'countdown') Sound.tick(true);
+  }
+  if (prev && fo.stage === 'buzzed' && !(prev.phase === 'faceoff' && prev.fo && prev.fo.stage === 'buzzed')) Sound.buzz(fo.winner);
+}
+function buildGrid(v) {
+  const g = $('grid');
+  g.innerHTML = '';
+  for (let i = 0; i < MAX; i++) {
+    const el = document.createElement('div');
+    el.className = 'slot' + (i < v.n ? '' : ' empty');
+    el.innerHTML = '<div class="inner"><div class="face front"><span>' + (i + 1) + '</span></div><div class="face back"><span class="ans"></span><span class="pts"></span></div></div>';
+    g.appendChild(el);
+  }
+  builtFor = v.qn;
+}
+function drawBoard(v, qn) {
+  show('board');
+  const g = $('grid');
+  const fresh = builtFor !== v.qn;
+  if (fresh) buildGrid(v);
+  $('bQn').innerHTML = qn;
+  $('bQ').textContent = v.q == null ? '(question hidden)' : v.q; $('bQ').classList.toggle('hidden', v.q == null);
+  setTr('bTr', v);
+  $('pot').textContent = v.pot;
+  $('potLbl').textContent = v.mult > 1 ? 'POT ×' + v.mult : 'POT';
+  document.querySelectorAll('.sbox').forEach((b, i) => b.classList.toggle('on', i < v.strikes));
+  const st = $('bStatus'), stealing = v.steal && !v.steal.result;
+  let cls = 'play', text = '';
+  if (v.survey) { cls = 'survey'; text = '<span>Survey says…</span>'; }
+  else if (!v.foDone) {
+    cls = 'fo';
+    const fo = v.fo;
+    text = fo.stage === 'buzzed' ? '⚡ ' + esc(tname(fo.winner)) + ' buzzed first!'
+      : fo.stage === 'second' ? esc(tname(1 - fo.winner)) + ', your turn!'
+      : fo.stage === 'decided' ? esc(tname(v.control)) + ' won the face-off: play or pass?'
+      : fo.stage === 'redo' ? 'Both missed! Face-off again.' : 'Face-off';
+  } else if (stealing) { cls = 'steal'; text = esc(tname(v.steal.team)) + ' can steal! One guess.'; }
+  else if (v.over) { cls = 'over'; text = esc(v.msg); }
+  else if (v.strikes >= 3) text = 'Three strikes!';
+  else if (v.control != null) text = (v.passed ? esc(tname(1 - v.control)) + ' passed. ' : '') + esc(tname(v.control)) + ' to play' + (v.strikes ? ' · strike ' + v.strikes + ' of 3' : '');
+  else text = 'Playing';
+  st.className = 'status ' + cls; st.innerHTML = text;
+  document.querySelectorAll('.team').forEach((el, t) => {
+    el.classList.toggle('control', v.control === t && !stealing);
+    el.classList.toggle('steal', !!(stealing && v.steal.team === t));
+  });
+  // Answers: draw what's revealed; animate only the ones new since the last snapshot.
+  const before = new Set(prev && prev.qn === v.qn && prev.shown ? prev.shown.map((s) => s[0]) : []);
+  const animate = !!prev && !fresh;
+  if (!animate) { g.classList.add('noanim'); }
+  const slots = g.querySelectorAll('.slot');
+  let k = 0;
+  (v.shown || []).forEach(([i, text, pts]) => {
+    const el = slots[i]; if (!el) return;
+    el.querySelector('.ans').textContent = text; el.querySelector('.pts').textContent = pts;
+    if (!animate || before.has(i)) { el.classList.add('flipped'); return; }
+    const wait = 120 + k * 450; k++;
+    setTimeout(() => { el.classList.add('flipped'); el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); Sound.ding(i === 0); }, wait);
+  });
+  if (!animate) { void g.offsetWidth; g.classList.remove('noanim'); }
+  if (!prev) return;
+  let t = k ? 120 + k * 450 + 250 : 0;
+  if (v.survey && !prev.survey) Sound.roll();
+  // A new X since the last snapshot: show as many X's as it carries (the strike count, or one for a miss).
+  if ((v.x || 0) > (prev.x || 0)) { setTimeout(() => flashX(v.xn || 1), t); t += 1650; }
+  if (prev.phase === 'faceoff' && prev.fo && prev.fo.stage !== 'buzzed' && v.fo.stage === 'buzzed') Sound.buzz(v.fo.winner);   // missed the face-off snapshot
+  const decided = v.fo.stage === 'decided' && !(prev.fo && prev.fo.stage === 'decided');
+  if ((v.over && !prev.over) || decided) setTimeout(() => Sound.fanfare(), t + 150);
+}
+let xTimer = null;
+function flashX(n) {
+  const f = $('flash'), k = Math.max(1, Math.min(3, n || 1));
+  f.innerHTML = '<div class="x">✕</div>'.repeat(k);
+  f.className = 'n' + k; void f.offsetWidth; f.classList.add('on');
+  clearTimeout(xTimer); xTimer = setTimeout(() => f.classList.remove('on'), 1500);
+  Sound.strike();
+}
+
+// ---------- start ----------
+// The github.io copy has no relay: say where TV mode runs instead of retrying forever.
+if (/\.github\.io$/.test(location.hostname)) {
+  $('wCode').textContent = 'TV';
+  $('wHow').innerHTML = 'TV mode runs at <b>ff.eventurelog.ca/tv</b>. This copy is the iPad-only version.';
+  $('soundHint').hidden = true;
+  return;
+}
+const fromHash = /^#([A-Z]{4})$/.exec(location.hash);
+if (fromHash) { code = fromHash[1]; connect(); } else newRoom();
+draw();
+})();
+</script>
+</body>
+</html>

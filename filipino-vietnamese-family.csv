@@ -1,22 +1,22 @@
-Question,Answer 1,Points 1,Answer 2,Points 2,Answer 3,Points 3,Answer 4,Points 4,Answer 5,Points 5,Answer 6,Points 6,Answer 7,Points 7,Answer 8,Points 8,Multiplier
-Name a kitchen tool every family has,Rice cooker,36,Knife,20,Wok,18,Mortar and pestle,10,Chopsticks,9,Big pot,5,,,,,
-Name something in a bowl of noodle soup,Noodles,31,Broth,23,Beef,15,Green onions,10,Egg,8,Bean sprouts,7,Chicken,6,,,
-Name something your family eats for breakfast,Fried rice,30,Eggs,26,Sausage,16,Spam,12,Dim sum,10,Bread,5,,,,,
-Name something you eat with rice,Eggs,22,Fish,19,Spam,16,Pork,13,Fish sauce,10,Soy sauce,8,Vegetables,6,Chicken,5,
-Name something that's always in your parents' freezer,Meat,27,Egg rolls,22,Ice cream,15,Fish,13,Leftovers,11,Bread,7,Ice,5,,,
-Name something parents buy in bulk,Rice,32,Toilet paper,21,Water,15,Fruit,12,Eggs,9,Paper towels,6,Snacks,5,,,
-Name a sound you hear in your parents' kitchen,Sizzling,26,Rice cooker,20,Chopping,18,"""Come eat!""",15,The TV,11,Pots and pans,8,,,,,
-Name a dessert at a family party,Flan,30,Sticky rice,18,Shaved ice,15,Cake,13,Mango,10,Ice cream,8,Coconut jelly,5,,,
-Name a fruit you'd find at an Asian market,Mango,30,Durian,18,Lychee,15,Dragon fruit,12,Jackfruit,10,Rambutan,7,Longan,5,Mangosteen,3,
-Name a sauce on the table at an Asian restaurant,Soy sauce,31,Hot sauce,26,Fish sauce,16,Hoisin,12,Chili oil,9,Vinegar,6,,,,,
-"Name something parents save ""just in case""",Plastic bags,40,Takeout containers,21,Cookie tins,13,Rubber bands,10,Wrapping paper,9,Sauce packets,6,,,,,
-Name something parents do to save money,Turn off the lights,30,Cook at home,22,Fix things themselves,16,Shop the sales,12,Save leftovers,9,Use coupons,6,Cut hair at home,4,,,
-Name a job parents want their kids to have,Doctor,45,Nurse,20,Lawyer,12,Engineer,11,Pharmacist,6,Dentist,5,,,,,
-Name something kids do when relatives come over,Say hi,36,Hide in their room,25,Serve food,15,Talk about grades,11,Play with cousins,8,Karaoke,5,,,,,
-Name a game the family plays at parties,Cards,32,Karaoke,22,Mahjong,15,Bingo,12,Basketball,10,Dice games,6,Chess,3,,,
-Name something you find in your parents' car,Religious item,26,Tissues,21,Plastic bags,15,Snacks,13,Seat covers,10,Air freshener,9,Coins,5,,,
-Name a time you take off your shoes,Coming home,62,Going to bed,16,Airport security,9,At the beach,7,Getting a pedicure,5,,,,,,,
-Name something you bring when visiting a relative,Food,41,Fruit,25,Dessert,13,Flowers,8,Drinks,7,A gift,5,,,,,
-Name something Grandma loves to do,Cook,36,Watch soap operas,18,Pray,15,Garden,11,Play cards,9,Tell stories,6,Go shopping,4,,,
-Name a place the family goes on the weekend,Shopping,28,Church or temple,26,Grocery store,22,Out to eat,12,The park,7,A relative's house,5,,,,,
-Name something the bride and groom do at the reception,First dance,30,Cut the cake,22,Visit every table,15,Give a speech,12,Thank the parents,8,Take photos,7,Change outfits,5,,,
+Question,Answer 1,Points 1,Answer 2,Points 2,Answer 3,Points 3,Answer 4,Points 4,Answer 5,Points 5,Answer 6,Points 6,Answer 7,Points 7,Answer 8,Points 8,Multiplier,Question (Tagalog),Question (Vietnamese)
+Name a kitchen tool every family has,Rice cooker,36,Knife,20,Wok,18,Mortar and pestle,10,Chopsticks,9,Big pot,5,,,,,,Magbigay ng gamit sa kusina na meron ang bawat pamilya.,Kể tên một dụng cụ nhà bếp mà nhà nào cũng có.
+Name something in a bowl of noodle soup,Noodles,31,Broth,23,Beef,15,Green onions,10,Egg,8,Bean sprouts,7,Chicken,6,,,,Magbigay ng sahog sa isang mangkok ng mami o noodle soup.,Kể tên một thứ có trong tô phở hay tô bún.
+Name something your family eats for breakfast,Fried rice,30,Eggs,26,Sausage,16,Spam,12,Dim sum,10,Bread,5,,,,,,Magbigay ng kinakain ng pamilya ninyo sa almusal.,Kể tên một món nhà bạn hay ăn sáng.
+Name something you eat with rice,Eggs,22,Fish,19,Spam,16,Pork,13,Fish sauce,10,Soy sauce,8,Vegetables,6,Chicken,5,,Magbigay ng kinakain mo kasabay ng kanin.,Kể tên một món bạn ăn với cơm.
+Name something that's always in your parents' freezer,Meat,27,Egg rolls,22,Ice cream,15,Fish,13,Leftovers,11,Bread,7,Ice,5,,,,Magbigay ng laging nasa freezer ng mga magulang mo.,Kể tên một thứ lúc nào cũng có trong ngăn đá của ba mẹ.
+Name something parents buy in bulk,Rice,32,Toilet paper,21,Water,15,Fruit,12,Eggs,9,Paper towels,6,Snacks,5,,,,Magbigay ng binibili ng mga magulang nang bultuhan.,Kể tên một thứ ba mẹ hay mua số lượng lớn.
+Name a sound you hear in your parents' kitchen,Sizzling,26,Rice cooker,20,Chopping,18,"""Come eat!""",15,The TV,11,Pots and pans,8,,,,,,Magbigay ng tunog na naririnig mo sa kusina ng mga magulang mo.,Kể tên một âm thanh bạn nghe được trong bếp của ba mẹ.
+Name a dessert at a family party,Flan,30,Sticky rice,18,Shaved ice,15,Cake,13,Mango,10,Ice cream,8,Coconut jelly,5,,,,Magbigay ng dessert sa handaan ng pamilya.,Kể tên một món tráng miệng ở tiệc gia đình.
+Name a fruit you'd find at an Asian market,Mango,30,Durian,18,Lychee,15,Dragon fruit,12,Jackfruit,10,Rambutan,7,Longan,5,Mangosteen,3,,Magbigay ng prutas na makikita mo sa Asian store.,Kể tên một loại trái cây ở chợ Á Châu.
+Name a sauce on the table at an Asian restaurant,Soy sauce,31,Hot sauce,26,Fish sauce,16,Hoisin,12,Chili oil,9,Vinegar,6,,,,,,Magbigay ng sawsawan na nasa mesa sa isang Asian restaurant.,Kể tên một loại nước chấm trên bàn ở nhà hàng Á Châu.
+"Name something parents save ""just in case""",Plastic bags,40,Takeout containers,21,Cookie tins,13,Rubber bands,10,Wrapping paper,9,Sauce packets,6,,,,,,"Magbigay ng itinatabi ng mga magulang, baka sakaling magamit.","Kể tên một thứ ba mẹ hay giữ lại ""phòng khi cần""."
+Name something parents do to save money,Turn off the lights,30,Cook at home,22,Fix things themselves,16,Shop the sales,12,Save leftovers,9,Use coupons,6,Cut hair at home,4,,,,Magbigay ng ginagawa ng mga magulang para makatipid.,Kể tên một việc ba mẹ làm để tiết kiệm tiền.
+Name a job parents want their kids to have,Doctor,45,Nurse,20,Lawyer,12,Engineer,11,Pharmacist,6,Dentist,5,,,,,,Magbigay ng trabahong gusto ng mga magulang para sa anak nila.,Kể tên một nghề mà ba mẹ muốn con mình làm.
+Name something kids do when relatives come over,Say hi,36,Hide in their room,25,Serve food,15,Talk about grades,11,Play with cousins,8,Karaoke,5,,,,,,Magbigay ng ginagawa ng mga bata kapag may dumalaw na kamag-anak.,Kể tên một việc con nít hay làm khi bà con tới nhà.
+Name a game the family plays at parties,Cards,32,Karaoke,22,Mahjong,15,Bingo,12,Basketball,10,Dice games,6,Chess,3,,,,Magbigay ng larong nilalaro ng pamilya sa handaan.,Kể tên một trò chơi cả nhà hay chơi trong tiệc.
+Name something you find in your parents' car,Religious item,26,Tissues,21,Plastic bags,15,Snacks,13,Seat covers,10,Air freshener,9,Coins,5,,,,Magbigay ng makikita mo sa kotse ng mga magulang mo.,Kể tên một thứ có trong xe của ba mẹ.
+Name a time you take off your shoes,Coming home,62,Going to bed,16,Airport security,9,At the beach,7,Getting a pedicure,5,,,,,,,,Magbigay ng pagkakataong nagtatanggal ka ng sapatos.,Kể tên một lúc bạn cởi giày ra.
+Name something you bring when visiting a relative,Food,41,Fruit,25,Dessert,13,Flowers,8,Drinks,7,A gift,5,,,,,,Magbigay ng dinadala mo kapag dumadalaw sa kamag-anak.,Kể tên một thứ bạn mang theo khi đi thăm bà con.
+Name something Grandma loves to do,Cook,36,Watch soap operas,18,Pray,15,Garden,11,Play cards,9,Tell stories,6,Go shopping,4,,,,Magbigay ng hilig gawin ni Lola.,Kể tên một việc mà bà rất thích làm.
+Name a place the family goes on the weekend,Shopping,28,Church or temple,26,Grocery store,22,Out to eat,12,The park,7,A relative's house,5,,,,,,Magbigay ng lugar na pinupuntahan ng pamilya tuwing weekend.,Kể tên một nơi cả nhà hay đi vào cuối tuần.
+Name something the bride and groom do at the reception,First dance,30,Cut the cake,22,Visit every table,15,Give a speech,12,Thank the parents,8,Take photos,7,Change outfits,5,,,,Magbigay ng ginagawa ng bagong kasal sa reception.,Kể tên một việc cô dâu chú rể làm trong tiệc cưới.
