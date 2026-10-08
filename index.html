@@ -199,6 +199,12 @@ table.qs .tot.bad { color: var(--red); font-weight: 700; }
 .b-qwrap { flex: 1; min-width: 0; }
 .b-qn { color: var(--muted); font-size: 13px; font-weight: 600; }
 .b-q { font-size: 22px; font-weight: 700; line-height: 1.2; }
+/* The question in Tagalog and Vietnamese, if the set has them: smaller lines under the English. */
+.q-tr { display: grid; gap: 1px; margin-top: 3px; }
+.q-tr:empty { display: none; }
+.q-tr div { font-size: 14px; font-weight: 600; color: #cbd5e1; line-height: 1.3; }
+.q-tr b { display: inline-block; min-width: 26px; margin-right: 6px; font-size: 10px; font-weight: 800; letter-spacing: .08em; color: var(--muted);
+  border: 1px solid #475569; border-radius: 4px; padding: 0 4px; text-align: center; vertical-align: 2px; }
 .b-q.hidden { color: var(--muted); font-style: italic; font-weight: 500; }
 .b-main { flex: 1; display: flex; gap: 10px; padding: 10px; min-height: 0; }
 .b-status { display: none; align-items: center; justify-content: center; gap: 14px; padding: 8px 12px; font-size: 20px; font-weight: 800; flex-wrap: wrap; }
@@ -389,6 +395,7 @@ body.gm .gm-banner { display: block; }
     <div style="flex:1;min-width:0">
       <div class="fo-qn" id="foQn"></div>
       <div class="fo-q" id="foQ"></div>
+      <div class="q-tr" id="foTr"></div>
     </div>
     <button id="btnArm" class="primary">Arm buzzers</button>
     <button id="btnSkipFo" class="small">Skip face-off</button>
@@ -406,7 +413,7 @@ body.gm .gm-banner { display: block; }
   <div class="gm-banner">GM VIEW — TURN THE IPAD AWAY FROM THE PLAYERS</div>
   <header class="b-top">
     <button id="btnPrev" class="qbtn">◀</button>
-    <div class="b-qwrap"><div class="b-qn" id="bQn"></div><div class="b-q" id="bQ"></div></div>
+    <div class="b-qwrap"><div class="b-qn" id="bQn"></div><div class="b-q" id="bQ"></div><div class="q-tr" id="bTr"></div></div>
     <button id="btnEye" class="qbtn" title="Hide / show question">Hide</button>
     <button id="btnNext" class="qbtn">▶</button>
     <div style="width:96px"></div>
@@ -447,6 +454,8 @@ body.gm .gm-banner { display: block; }
 <div id="qEditor" class="overlay"><div class="ed-box">
   <h2 id="edTitle">Add a question</h2>
   <label class="q"><span>Question</span><input type="text" id="edQ" maxlength="200" placeholder="Name something people do when they can't sleep"></label>
+  <label class="q"><span>Question in Tagalog (optional)</span><input type="text" id="edQtl" maxlength="200" placeholder="Magbigay ng…"></label>
+  <label class="q"><span>Question in Vietnamese (optional)</span><input type="text" id="edQvi" maxlength="200" placeholder="Kể tên…"></label>
   <div class="hint" style="margin:0 0 10px">Points = out of 100 people surveyed, how many gave this answer. Only the popular answers go on the board, so the total is usually under 100. It can't go over 100.</div>
   <div class="ed-rows" id="edRows"></div>
   <div class="ed-mult">Points this round <div class="seg" id="edMult"><button data-m="1">×1 normal</button><button data-m="2">×2 double</button><button data-m="3">×3 triple</button></div></div>
@@ -521,13 +530,20 @@ function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 function parseRows(rows) {
   const questions = [], flags = [];
   let seenHeader = false;
+  // The question in Tagalog and Vietnamese: optional columns, right after Multiplier unless a header row
+  // names them elsewhere. Sheets without them load as before.
+  let colTl = 2 + 2 * MAX, colVi = 3 + 2 * MAX;
   rows.forEach((r, idx) => {
     const rowNo = idx + 1;
     const cells = (r || []).map((c) => (c == null ? '' : String(c).trim()));
     if (cells.every((c) => c === '')) return;
     const q = cells[0] || '';
     // header row: first non-empty row whose first cell says "question" and has no numeric points
-    if (!seenHeader && !questions.length && /question/i.test(q) && !isNum(cells[2])) { seenHeader = true; return; }
+    if (!seenHeader && !questions.length && /question/i.test(q) && !isNum(cells[2])) {
+      seenHeader = true;
+      cells.forEach((c, i) => { if (/tagalog|filipino/i.test(c)) colTl = i; else if (/vietnam|việt/i.test(c)) colVi = i; });
+      return;
+    }
     seenHeader = true;
     const problems = [], warns = [], answers = [];
     if (!q) problems.push('no question text');
@@ -547,7 +563,10 @@ function parseRows(rows) {
     let mult = 1;
     if (mRaw !== '') { if (['1', '2', '3'].includes(mRaw)) mult = Number(mRaw); else warns.push('multiplier "' + cells[1 + 2 * MAX] + '" is not 1, 2 or 3, using ×1'); }
     if (warns.length) flags.push({ row: rowNo, level: 'warn', msg: 'Row ' + rowNo + ' loaded, but ' + warns.join('; ') });
-    questions.push({ q, answers, mult, row: rowNo });
+    const item = { q, answers, mult, row: rowNo };
+    if (cells[colTl]) item.tl = cells[colTl];
+    if (cells[colVi]) item.vi = cells[colVi];
+    questions.push(item);
   });
   return { questions, flags };
 }
@@ -690,6 +709,7 @@ function tvView() {
   // The question stays off the TV until the face-off buzzers go live.
   const veiled = S.phase === 'faceoff' && !r.fo.seen && (r.fo.stage === 'idle' || r.fo.stage === 'countdown');
   v.q = S.qHidden || veiled ? null : q.q; v.veiled = veiled;
+  if (v.q != null) { if (q.tl) v.tl = q.tl; if (q.vi) v.vi = q.vi; }
   v.mult = r.mult || 1; v.n = q.answers.length;
   v.shown = [];
   q.answers.forEach((a, i) => { if (r.revealed[i]) v.shown.push([i, a.text, a.points]); });
@@ -863,6 +883,11 @@ const TV = (() => {
   };
 })();
 
+// The question's Tagalog and Vietnamese lines, if the set has them.
+function trLines(q) {
+  return (q.tl ? '<div><b>TL</b>' + esc(q.tl) + '</div>' : '') + (q.vi ? '<div><b>VI</b>' + esc(q.vi) + '</div>' : '');
+}
+
 // ---------- setup screen ----------
 function renderSetup() {
   $('nameA').value = S.teams[0].name; $('nameB').value = S.teams[1].name;
@@ -938,12 +963,12 @@ function moveQ(i, d) {
 function exportCsv() {
   const cell = (v) => { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
   const head = ['Question']; for (let k = 1; k <= MAX; k++) head.push('Answer ' + k, 'Points ' + k);
-  head.push('Multiplier');
+  head.push('Multiplier', 'Question (Tagalog)', 'Question (Vietnamese)');
   const lines = [head.join(',')];
   S.questions.forEach((q) => {
     const r = [cell(q.q)];
     for (let k = 0; k < MAX; k++) { const a = q.answers[k]; r.push(a ? cell(a.text) : '', a ? a.points : ''); }
-    r.push(q.mult || 1);
+    r.push(q.mult || 1, cell(q.tl || ''), cell(q.vi || ''));
     lines.push(r.join(','));
   });
   const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv' });
@@ -972,6 +997,7 @@ function openEditor(i) {
   const q = i >= 0 ? S.questions[i] : null;
   $('edTitle').textContent = q ? 'Edit question ' + (i + 1) : 'Add a question';
   $('edQ').value = q ? q.q : '';
+  $('edQtl').value = q && q.tl ? q.tl : ''; $('edQvi').value = q && q.vi ? q.vi : '';
   setEdMult(q && q.mult ? q.mult : 1);
   const as = $('edRows').querySelectorAll('input.a'), ps = $('edRows').querySelectorAll('input.p');
   for (let k = 0; k < MAX; k++) {
@@ -1012,6 +1038,9 @@ function saveEditor() {
   if (r.errors.length) { editorCheck(); return; }
   r.answers.sort((a, b) => b.points - a.points);   // rank order: top answer first
   const item = { q: r.q, answers: r.answers, mult: edMultVal };
+  const tl = $('edQtl').value.trim(), vi = $('edQvi').value.trim();
+  if (tl) item.tl = tl;
+  if (vi) item.vi = vi;
   if (edIndex >= 0) S.questions[edIndex] = item; else S.questions.push(item);
   closeEditor();
   questionsChanged(edIndex >= 0 ? edIndex : -1);
@@ -1146,6 +1175,7 @@ function renderFaceoff() {
   const veiled = !fo.seen && (fo.stage === 'idle' || fo.stage === 'countdown');
   $('foQ').textContent = veiled ? 'The question shows when the buzzers go live.' : q.q;
   $('foQ').classList.toggle('veiled', veiled);
+  $('foTr').innerHTML = veiled ? '' : trLines(q);
   $('btnArm').disabled = fo.stage !== 'idle';
   $('btnArm').textContent = fo.stage === 'countdown' ? 'Get ready…' : fo.stage === 'armed' ? 'Armed…' : 'Arm buzzers';
   for (let s = 0; s < 2; s++) {
@@ -1403,6 +1433,7 @@ function renderBoard() {
   $('bQn').textContent = 'Question ' + (S.qi + 1) + ' of ' + S.questions.length;
   $('bQ').textContent = S.qHidden ? '(question hidden)' : q.q;
   $('bQ').classList.toggle('hidden', S.qHidden);
+  $('bTr').innerHTML = S.qHidden ? '' : trLines(q);
   $('btnEye').textContent = S.qHidden ? 'Show' : 'Hide';
   $('btnPrev').disabled = S.qi === 0;
   const last = S.qi >= S.questions.length - 1;

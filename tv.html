@@ -40,6 +40,13 @@ body { background: var(--bg); color: var(--text); overflow: hidden; cursor: defa
 .qn .mult { color: #1c1917; background: var(--gold); border-radius: 1vh; padding: .2vh 1.2vh; margin-left: 1.2vh; }
 .q { font-size: 6vh; font-weight: 800; line-height: 1.15; text-wrap: balance; }
 .q.hidden { color: var(--muted); font-style: italic; font-weight: 600; }
+/* Tagalog and Vietnamese under the English question: smaller, each with a small label. */
+.tr { display: grid; gap: .3vh; margin-top: .6vh; }
+.tr:empty { display: none; }
+.tr div { font-size: 3.1vh; font-weight: 700; color: #cbd5e1; line-height: 1.2; text-wrap: balance; }
+.tr b { display: inline-block; font-size: 1.7vh; font-weight: 800; letter-spacing: .1em; color: var(--muted);
+  border: .2vh solid #475569; border-radius: .6vh; padding: 0 .8vh; margin-right: 1vh; vertical-align: .5vh; }
+.has-tr .q { font-size: 5vh; }
 .f-zones { flex: 1; display: flex; gap: 2vh; min-height: 0; }
 .zone { flex: 1; border-radius: 3vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vh;
   filter: brightness(.5); transition: filter .15s, box-shadow .15s; }
@@ -146,7 +153,7 @@ body { background: var(--bg); color: var(--text); overflow: hidden; cursor: defa
 </section>
 
 <section id="faceoff" class="screen">
-  <div class="f-top"><div class="qn" id="fQn"></div><div class="q" id="fQ"></div></div>
+  <div class="f-top"><div class="qn" id="fQn"></div><div class="q" id="fQ"></div><div class="tr" id="fTr"></div></div>
   <div class="f-zones">
     <div class="zone t0"><img class="photo" data-photo="0" alt="" hidden><div class="name" data-name="0"></div><div class="big"></div><div class="sub"></div></div>
     <div class="zone t1"><img class="photo" data-photo="1" alt="" hidden><div class="name" data-name="1"></div><div class="big"></div><div class="sub"></div></div>
@@ -155,7 +162,7 @@ body { background: var(--bg); color: var(--text); overflow: hidden; cursor: defa
 </section>
 
 <section id="board" class="screen">
-  <div class="b-top"><div class="qn" id="bQn"></div><div class="q" id="bQ"></div></div>
+  <div class="b-top"><div class="qn" id="bQn"></div><div class="q" id="bQ"></div><div class="tr" id="bTr"></div></div>
   <div class="status" id="bStatus"></div>
   <div class="b-main">
     <div class="grid" id="grid"></div>
@@ -276,6 +283,15 @@ setInterval(() => {
 
 // ---------- drawing ----------
 const tname = (t) => (view && view.teams && view.teams[t] && view.teams[t].name) || (t ? 'Team B' : 'Team A');
+// The question in Tagalog and Vietnamese, under the English, once it shows. Answers stay English.
+function trLines(v) {
+  return (v.tl ? '<div><b>TAGALOG</b>' + esc(v.tl) + '</div>' : '') + (v.vi ? '<div><b>TIẾNG VIỆT</b>' + esc(v.vi) + '</div>' : '');
+}
+function setTr(id, v) {
+  const el = $(id), html = v.q == null ? '' : trLines(v);
+  if (el.innerHTML !== html) el.innerHTML = html;
+  el.parentElement.classList.toggle('has-tr', !!html);
+}
 function show(id) { document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === id)); }
 function showPhotos() {
   document.querySelectorAll('img[data-photo]').forEach((img) => {
@@ -327,7 +343,8 @@ function drawFaceoff(v, qn) {
   const wasVeiled = fq.classList.contains('veiled');
   fq.textContent = v.veiled ? (fo.stage === 'countdown' ? 'Get ready…' : 'Face-off') : v.q == null ? '(question hidden)' : v.q;
   fq.classList.toggle('veiled', !!v.veiled); fq.classList.toggle('hidden', !v.veiled && v.q == null);
-  if (wasVeiled && !v.veiled) { fq.classList.remove('reveal'); void fq.offsetWidth; fq.classList.add('reveal'); }
+  setTr('fTr', v);
+  if (wasVeiled && !v.veiled) { for (const el of [fq, $('fTr')]) { el.classList.remove('reveal'); void el.offsetWidth; el.classList.add('reveal'); } }
   document.querySelectorAll('.zone').forEach((z, s) => {
     const big = z.querySelector('.big');
     const text = fo.stage === 'countdown' ? String(fo.cd) : fo.stage === 'armed' ? 'BUZZ!' : fo.stage === 'buzzed' && fo.winner === s ? 'FIRST!' : '';
@@ -364,6 +381,7 @@ function drawBoard(v, qn) {
   if (fresh) buildGrid(v);
   $('bQn').innerHTML = qn;
   $('bQ').textContent = v.q == null ? '(question hidden)' : v.q; $('bQ').classList.toggle('hidden', v.q == null);
+  setTr('bTr', v);
   $('pot').textContent = v.pot;
   $('potLbl').textContent = v.mult > 1 ? 'POT ×' + v.mult : 'POT';
   document.querySelectorAll('.sbox').forEach((b, i) => b.classList.toggle('on', i < v.strikes));
