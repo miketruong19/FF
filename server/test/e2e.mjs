@@ -124,17 +124,25 @@ try {
   // ---------- a round ----------
   await ipad.click('#btnStart');
   await tv.waitForSelector('#faceoff.active');
-  const q1 = await ipad.textContent('#foQ');
-  assert.equal(await tv.textContent('#fQ'), q1);
+  const q1 = (await ipad.evaluate(() => JSON.parse(localStorage.getItem('family-feud-state-v1')))).questions[0].q;
+  // Until the count ends, the question is on neither screen and was never sent to the TV.
+  assert.equal(await tv.textContent('#fQ'), 'Face-off');
+  assert.notEqual(await ipad.textContent('#foQ'), q1);
+  assert.ok(!tvFrames.some((f) => f.includes(JSON.stringify(q1).slice(1, -1))), 'the question reached the TV before arming');
   await tv.waitForFunction(() => !document.querySelector('#faceoff .photo[data-photo="0"]').hidden);
   assert.equal(await tv.$eval('#faceoff .photo[data-photo="1"]', (e) => e.hidden), true);
   await ipad.click('#btnArm');
+  // A tap during the count is ignored: no buzz winner.
+  await ipad.locator('.zone[data-side="1"]').dispatchEvent('pointerdown');
   await tv.waitForSelector('#faceoff .zone.armed');
+  assert.equal(await tv.$('#faceoff .zone.winner'), null, 'a tap during the countdown must not win the buzz');
+  assert.equal(await tv.textContent('#fQ'), q1);
+  assert.equal(await ipad.textContent('#foQ'), q1);
   await shot(tv, 'tv-3-armed');
   await ipad.locator('.zone[data-side="0"]').dispatchEvent('pointerdown');
   await tv.waitForSelector('#faceoff .zone.t0.winner');
   await shot(tv, 'tv-4-buzzed');
-  step('face-off: the question, arm and the buzz winner show on the TV, with team A\'s photo only');
+  step('face-off: the question stays hidden and unsent until arming counts 3-2-1, a tap during the count is ignored, then the buzz winner shows on the TV');
 
   await ipad.waitForSelector('#board.active');
   await tv.waitForSelector('#board.active');
@@ -142,7 +150,7 @@ try {
   await tv.waitForFunction(() => document.querySelectorAll('#grid .slot.flipped').length === 1);
   const top = (await ipad.evaluate(() => JSON.parse(localStorage.getItem('family-feud-state-v1')))).questions[0].answers[0].text;
   assert.deepEqual(await flipped(tv), [top]);
-  await tv.waitForFunction(() => document.getElementById('bStatus').textContent.includes('has control'));
+  await tv.waitForFunction(() => document.getElementById('bStatus').textContent.includes('won the face-off'));
   await ipad.click('#bStatus [data-act="play"]');
   await judge(ipad, 2);
   await tv.waitForFunction(() => document.querySelectorAll('#grid .slot.flipped').length === 2);

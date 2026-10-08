@@ -53,6 +53,12 @@ body { background: var(--bg); color: var(--text); overflow: hidden; cursor: defa
 .zone.armed .big { animation: pulse .5s ease-in-out infinite alternate; }
 .zone.winner { filter: brightness(1.1); box-shadow: 0 0 0 1.2vh var(--gold) inset, 0 0 8vh rgba(251,191,36,.6); }
 .zone.winner.t0 { background: var(--a); } .zone.winner.t1 { background: var(--b); }
+.zone.count { filter: brightness(1); }
+.zone.count .big { color: var(--gold); font-size: 22vh; animation: countpop .9s ease-out; }
+@keyframes countpop { 0% { transform: scale(1.6); opacity: 0; } 25% { transform: scale(1); opacity: 1; } 100% { opacity: 1; } }
+.q.veiled { color: var(--muted); font-style: italic; font-weight: 700; }
+.q.reveal { animation: qreveal .6s ease-out; }
+@keyframes qreveal { 0% { opacity: 0; transform: translateY(2vh); } 100% { opacity: 1; transform: none; } }
 .f-msg { text-align: center; font-size: 4.5vh; font-weight: 800; color: var(--gold); min-height: 6vh; }
 
 /* ---- board ---- */
@@ -108,10 +114,14 @@ body { background: var(--bg); color: var(--text); overflow: hidden; cursor: defa
 #end .eteam .s { font-size: 11vh; font-weight: 900; line-height: 1; }
 
 /* ---- overlays ---- */
-#flash { display: none; position: fixed; inset: 0; z-index: 40; align-items: center; justify-content: center; pointer-events: none; }
-#flash.on { display: flex; animation: strikepop .8s ease-out forwards; }
-#flash span { font-size: 60vh; font-weight: 900; color: var(--red); text-shadow: 0 0 8vh rgba(239,68,68,.8); line-height: 1; }
-@keyframes strikepop { 0% { opacity: 0; transform: scale(.6); } 15% { opacity: 1; transform: scale(1.05); } 80% { opacity: 1; } 100% { opacity: 0; } }
+/* The show's strike: one, two or three big red X's for about 1.5 s. */
+#flash { display: none; position: fixed; inset: 0; z-index: 40; align-items: center; justify-content: center; gap: 4vh; pointer-events: none; background: rgba(0,0,0,.55); }
+#flash.on { display: flex; animation: strikepop 1.5s ease-out forwards; }
+#flash .x { width: 46vh; height: 46vh; border: 1.4vh solid var(--red); border-radius: 4vh; background: rgba(127,29,29,.55);
+  display: flex; align-items: center; justify-content: center; font-size: 44vh; font-weight: 900; color: var(--red); line-height: 1;
+  text-shadow: 0 0 8vh rgba(239,68,68,.9); box-shadow: 0 0 10vh rgba(239,68,68,.6), inset 0 0 6vh rgba(239,68,68,.35); }
+#flash.n3 .x { width: 40vh; height: 40vh; font-size: 38vh; }
+@keyframes strikepop { 0% { opacity: 0; transform: scale(.6); } 10% { opacity: 1; transform: scale(1.06); } 20% { transform: scale(1); } 85% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes pulse { from { opacity: .55; transform: scale(.97); } to { opacity: 1; transform: scale(1.03); } }
 #tag { position: fixed; top: 1.6vh; right: 1.6vh; z-index: 30; font-size: 2.2vh; font-weight: 800; padding: .8vh 1.6vh; border-radius: 1vh;
   background: rgba(11,18,32,.88); color: var(--gold); display: none; }
@@ -169,7 +179,7 @@ body { background: var(--bg); color: var(--text); overflow: hidden; cursor: defa
   </div>
 </section>
 
-<div id="flash"><span>✕</span></div>
+<div id="flash"></div>
 <div id="tag"></div>
 <div id="corner"></div>
 
@@ -211,6 +221,7 @@ const Sound = (() => {
     unlock() { const c = ctx(); if (c && c.resume) c.resume().then(() => { $('soundHint').hidden = true; }).catch(() => {}); },
     buzz: safe((c, t) => { const f = t === 0 ? 587 : 784; tone(c, { f, d: .4, type: 'square', v: .09, hold: true }); tone(c, { f: f * 2, d: .4, v: .05, hold: true }); }),
     ding: safe((c, top) => { const bell = (f, t) => { tone(c, { f, t, d: 1.4, v: .22 }); tone(c, { f: f * 2, t, d: .7, v: .07 }); tone(c, { f: f * 3, t, d: .35, v: .03 }); }; bell(1318.5, 0); if (top) bell(1760, .16); }),
+    tick: safe((c, go) => tone(c, go ? { f: 1046, d: .35, type: 'triangle', v: .18 } : { f: 660, d: .12, type: 'triangle', v: .12 })),
     strike: safe((c) => { tone(c, { f: 118, d: .9, type: 'sawtooth', v: .16, hold: true }); tone(c, { f: 124, d: .9, type: 'square', v: .08, hold: true }); }),
     roll: safe((c) => { for (let t = 0; t < 1.4; t += .045) hit(c, t, .05, .03 + .22 * (t / 1.4)); }),
     fanfare: safe((c) => { [523, 659, 784, 1047].forEach((f, i) => tone(c, { f, t: i * .12, d: i === 3 ? .7 : .22, type: 'triangle', v: .16 })); }),
@@ -299,7 +310,7 @@ function draw() {
   if (v.phase === 'end') {
     show('end');
     const a = v.teams[0].score, b = v.teams[1].score;
-    $('eWinner').textContent = a === b ? 'It’s a tie!' : tname(a > b ? 0 : 1) + ' wins!';
+    $('eWinner').textContent = a === b ? 'It’s a tie!' : 'Winner: ' + tname(a > b ? 0 : 1) + '!';
     document.querySelectorAll('#end .eteam').forEach((el, t) => el.classList.toggle('won', v.teams[t].score > v.teams[1 - t].score));
     if (prev && prev.phase !== 'end') Sound.win();
     return;
@@ -311,15 +322,28 @@ function draw() {
 function drawFaceoff(v, qn) {
   show('faceoff');
   $('fQn').innerHTML = qn;
-  $('fQ').textContent = v.q == null ? '(question hidden)' : v.q; $('fQ').classList.toggle('hidden', v.q == null);
-  const fo = v.fo;
+  const fo = v.fo, fq = $('fQ');
+  // The question stays veiled until the count ends; then it slides in as the buzzers go live.
+  const wasVeiled = fq.classList.contains('veiled');
+  fq.textContent = v.veiled ? (fo.stage === 'countdown' ? 'Get ready…' : 'Face-off') : v.q == null ? '(question hidden)' : v.q;
+  fq.classList.toggle('veiled', !!v.veiled); fq.classList.toggle('hidden', !v.veiled && v.q == null);
+  if (wasVeiled && !v.veiled) { fq.classList.remove('reveal'); void fq.offsetWidth; fq.classList.add('reveal'); }
   document.querySelectorAll('.zone').forEach((z, s) => {
+    const big = z.querySelector('.big');
+    const text = fo.stage === 'countdown' ? String(fo.cd) : fo.stage === 'armed' ? 'BUZZ!' : fo.stage === 'buzzed' && fo.winner === s ? 'FIRST!' : '';
+    z.classList.toggle('count', fo.stage === 'countdown');
+    if (fo.stage === 'countdown' && big.textContent !== text) { big.textContent = text; z.classList.remove('count'); void z.offsetWidth; z.classList.add('count'); }
     z.classList.toggle('armed', fo.stage === 'armed');
     z.classList.toggle('winner', fo.stage === 'buzzed' && fo.winner === s);
-    z.querySelector('.big').textContent = fo.stage === 'armed' ? 'BUZZ!' : fo.stage === 'buzzed' && fo.winner === s ? 'FIRST!' : '';
+    big.textContent = text;
     z.querySelector('.sub').textContent = fo.stage === 'buzzed' && fo.winner === s && fo.lead > 0 ? 'by ' + fo.lead + ' ms' : '';
   });
-  $('fMsg').textContent = fo.stage === 'armed' ? 'First touch wins!' : fo.stage === 'buzzed' ? tname(fo.winner) + ' buzzed first!' : 'Face-off: get ready…';
+  $('fMsg').textContent = fo.stage === 'armed' ? 'Buzz! First touch wins.' : fo.stage === 'buzzed' ? tname(fo.winner) + ' buzzed first!'
+    : fo.stage === 'countdown' ? 'The question shows on 1…' : 'One player from each team to the buzzers';
+  if (prev && prev.phase === 'faceoff' && prev.fo) {
+    if (fo.stage === 'countdown' && (prev.fo.stage !== 'countdown' || prev.fo.cd !== fo.cd)) Sound.tick(false);
+    if (fo.stage === 'armed' && prev.fo.stage === 'countdown') Sound.tick(true);
+  }
   if (prev && fo.stage === 'buzzed' && !(prev.phase === 'faceoff' && prev.fo && prev.fo.stage === 'buzzed')) Sound.buzz(fo.winner);
 }
 function buildGrid(v) {
@@ -351,11 +375,13 @@ function drawBoard(v, qn) {
     const fo = v.fo;
     text = fo.stage === 'buzzed' ? '⚡ ' + esc(tname(fo.winner)) + ' buzzed first!'
       : fo.stage === 'second' ? esc(tname(1 - fo.winner)) + ', your turn!'
-      : fo.stage === 'decided' ? esc(tname(v.control)) + ' has control!'
+      : fo.stage === 'decided' ? esc(tname(v.control)) + ' won the face-off: play or pass?'
       : fo.stage === 'redo' ? 'Both missed! Face-off again.' : 'Face-off';
   } else if (stealing) { cls = 'steal'; text = esc(tname(v.steal.team)) + ' can steal! One guess.'; }
   else if (v.over) { cls = 'over'; text = esc(v.msg); }
-  else text = v.strikes >= 3 ? 'Three strikes!' : v.control != null ? esc(tname(v.control)) + ' is playing' : 'Playing';
+  else if (v.strikes >= 3) text = 'Three strikes!';
+  else if (v.control != null) text = (v.passed ? esc(tname(1 - v.control)) + ' passed. ' : '') + esc(tname(v.control)) + ' to play' + (v.strikes ? ' · strike ' + v.strikes + ' of 3' : '');
+  else text = 'Playing';
   st.className = 'status ' + cls; st.innerHTML = text;
   document.querySelectorAll('.team').forEach((el, t) => {
     el.classList.toggle('control', v.control === t && !stealing);
@@ -378,17 +404,18 @@ function drawBoard(v, qn) {
   if (!prev) return;
   let t = k ? 120 + k * 450 + 250 : 0;
   if (v.survey && !prev.survey) Sound.roll();
-  const xs = Math.max(0, (v.x || 0) - (prev.x || 0));
-  for (let j = 0; j < xs; j++) setTimeout(flashX, t + j * 950);
-  t += xs * 950;
+  // A new X since the last snapshot: show as many X's as it carries (the strike count, or one for a miss).
+  if ((v.x || 0) > (prev.x || 0)) { setTimeout(() => flashX(v.xn || 1), t); t += 1650; }
   if (prev.phase === 'faceoff' && prev.fo && prev.fo.stage !== 'buzzed' && v.fo.stage === 'buzzed') Sound.buzz(v.fo.winner);   // missed the face-off snapshot
   const decided = v.fo.stage === 'decided' && !(prev.fo && prev.fo.stage === 'decided');
   if ((v.over && !prev.over) || decided) setTimeout(() => Sound.fanfare(), t + 150);
 }
-function flashX() {
-  const f = $('flash');
-  f.classList.remove('on'); void f.offsetWidth; f.classList.add('on');
-  setTimeout(() => f.classList.remove('on'), 800);
+let xTimer = null;
+function flashX(n) {
+  const f = $('flash'), k = Math.max(1, Math.min(3, n || 1));
+  f.innerHTML = '<div class="x">✕</div>'.repeat(k);
+  f.className = 'n' + k; void f.offsetWidth; f.classList.add('on');
+  clearTimeout(xTimer); xTimer = setTimeout(() => f.classList.remove('on'), 1500);
   Sound.strike();
 }
 
