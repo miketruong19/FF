@@ -44,10 +44,10 @@ try {
   say('face-off armed and buzzed on the TV');
 
   await ipad.waitForSelector('#board.active');
+  // Joined to a TV, the iPad is the GM console: tap the answer they gave, or ✗.
   const judge = async (idx) => {
-    await ipad.click('#bStatus [data-act="check"]'); await ipad.click('#curtain');
-    if (idx >= 0) await ipad.click(`#gmList button[data-i="${idx}"]`); else await ipad.click('#gmMiss');
-    await ipad.click('#gmOk'); await ipad.click('#curtain'); await ipad.waitForTimeout(300);
+    if (idx >= 0) await ipad.click(`#grid .slot[data-i="${idx}"]`); else await ipad.click('#btnStrike');
+    await ipad.waitForTimeout(300);
   };
   await judge(0);
   await tv.waitForFunction(() => document.querySelectorAll('#grid .slot.flipped').length === 1);

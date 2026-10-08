@@ -73,6 +73,12 @@ async function gateIpad(page) {
 }
 
 async function judge(page, idx) {   // idx: answer index, or -1 for "not on board" / strike
+  // Joined to a TV the iPad is the GM console: tap the answer they gave, or ✗.
+  if (await page.evaluate(() => document.body.classList.contains('console'))) {
+    if (idx >= 0) await page.click(`#grid .slot[data-i="${idx}"]`); else await page.click('#btnStrike');
+    await page.waitForTimeout(350);
+    return;
+  }
   await page.click('#bStatus [data-act="check"]');
   await page.click('#curtain');
   if (idx >= 0) await page.click(`#gmList button[data-i="${idx}"]`); else await page.click('#gmMiss');
@@ -151,15 +157,26 @@ try {
   const top = (await ipad.evaluate(() => JSON.parse(localStorage.getItem('family-feud-state-v1')))).questions[0].answers[0].text;
   assert.deepEqual(await flipped(tv), [top]);
   await tv.waitForFunction(() => document.getElementById('bStatus').textContent.includes('won the face-off'));
+  // The joined iPad is a GM console: every answer with its points up front, no GM-view toggle, no sounds.
+  const answers = (await ipad.evaluate(() => JSON.parse(localStorage.getItem('family-feud-state-v1')))).questions[0].answers;
+  assert.ok(await ipad.evaluate(() => document.body.classList.contains('console')));
+  assert.ok(await ipad.$eval('#grid', (g) => g.classList.contains('gm')));
+  const onIpad = await ipad.$$eval('#grid .slot:not(.empty) .ans', (els) => els.map((e) => e.textContent));
+  assert.deepEqual(onIpad, answers.map((a) => a.text));
+  assert.equal(await ipad.$eval('#gmToggle', (b) => getComputedStyle(b).display), 'none');
+  assert.equal(await ipad.evaluate(() => document.querySelector('.btn-sound') && getComputedStyle(document.querySelector('.btn-sound')).display), 'none');
   await ipad.click('#bStatus [data-act="play"]');
   await judge(ipad, 2);
   await tv.waitForFunction(() => document.querySelectorAll('#grid .slot.flipped').length === 2);
+  assert.equal(await ipad.textContent('#btnStrike'), '✗ Strike');
   await judge(ipad, -1);                                          // a strike
   await tv.waitForFunction(() => document.querySelectorAll('.sbox.on').length === 1);
+  await tv.waitForSelector('#flash.on');                          // the X shows on the TV …
+  assert.equal(await ipad.$eval('#strikeFlash', (f) => getComputedStyle(f).display), 'none');   // … not on the console
   assert.equal(await tv.textContent('#pot'), await ipad.textContent('#pot'));
   await shot(tv, 'tv-5-board');
   await shot(ipad, 'ipad-2-board');
-  step('board: reveals, control, a strike and the pot match on the TV');
+  step('board: the iPad is a GM console (every answer up front, tap to rule, no X or sounds), and reveals, control, a strike and the pot match on the TV');
 
   // ---------- the line drops; the iPad plays on ----------
   gate.drop();
@@ -296,10 +313,11 @@ try {
   await pPage.waitForTimeout(800);
   assert.equal(await pPage.$eval('#tvCard', (e) => e.hidden), true);
   assert.equal(await pPage.$eval('#tvPill', (e) => e.hidden), true);
+  assert.equal(await pPage.evaluate(() => document.body.classList.contains('console')), false);
   await pPage.click('#btnStart');
   await pPage.waitForSelector('#faceoff.active');
   await pCtx.close(); plain.close();
-  step('the github.io build (no relay): no TV card, no pill, the game starts as before');
+  step('the github.io build (no relay): no TV card, no pill, no console, the game starts as before');
 
   // The stand-in static server answers the relay probe (api/info) with 404, as any plain host would.
   const real = errors.filter((e) => !/^github\.io build console: Failed to load resource: .*404/.test(e));

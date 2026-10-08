@@ -70,6 +70,21 @@ input[type=text] {
 .tphoto { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; flex: none; background: #0b1220; box-shadow: 0 0 0 2px rgba(255,255,255,.55); }
 .tphoto[hidden] { display: none; }
 .tphoto-row .tphoto { width: 56px; height: 56px; }
+/* GM console: when the iPad is joined to a TV, the TV is the game screen and the iPad is the GM's.
+   Every answer shows flat with its points; no flips, no X overlay, no sounds; scores in a slim strip. */
+body.console #gmToggle, body.console .gm-banner, body.console #strikeFlash, body.console .btn-sound { display: none !important; }
+body.console .grid .slot { cursor: pointer; }
+body.console .grid.gm .back { font-size: 16px; }
+body.console .grid.gm .slot:not(.revealed):not(.empty) .back { background: #273449; border-color: #3b82f6; }
+body.console .grid.gm .slot:not(.revealed):not(.empty):active .back { filter: brightness(1.3); }
+body.console .b-bottom .team { padding: 6px 10px; gap: 8px; }
+body.console .b-bottom .team .tname { font-size: 16px; }
+body.console .b-bottom .team .tscore { font-size: 24px; min-width: 64px; padding: 2px 8px; }
+body.console .b-bottom .team .tphoto { width: 30px; height: 30px; }
+body.console .b-bottom .team .give { min-height: 40px; padding: 8px 12px; font-size: 14px; }
+body.console .pot .num { font-size: 40px; }
+body.console .zone.count .zone-big { font-size: 64px; animation: none; }
+body.console .b-status .hint { font-size: 14px; font-weight: 600; color: var(--muted); }
 /* TV mode: only shown when the page comes from the relay (server/). */
 #tvCard[hidden], #tvCard [hidden], #tvPill[hidden] { display: none !important; }
 #tvCode { width: 6.2em; font-size: 28px; font-weight: 800; letter-spacing: .25em; text-transform: uppercase; text-align: center;
@@ -664,6 +679,8 @@ function showPhotos() {
 // the GM's list. Photos go once, shrunk to 256px. If the line drops, the game carries on here and the
 // TV catches up from the next snapshot. The room also keeps a backup of the game for Resume.
 const TV_PHOTO_SIDE = 256;
+// Joined to a TV room (even while reconnecting): the iPad is the GM console, the TV the game screen.
+const consoleMode = () => document.body.classList.contains('console');
 let tvX = 0, tvXn = 1;   // counts the X flashes (and how many X's the last one showed) (strikes, face-off misses, missed steals), so the TV flashes each once
 function tvView() {
   const v = { phase: S.phase, teams: [0, 1].map((t) => ({ name: tname(t), score: S.teams[t].score })) };
@@ -800,6 +817,11 @@ const TV = (() => {
     $('tvCard').hidden = !available;
     if (!available) return;
     const on = want || state === 'live';
+    if (consoleMode() !== on) {
+      document.body.classList.toggle('console', on);
+      builtFor = -1;                                   // redraw the board in the other style
+      if (S.phase !== 'setup' && !S.setupOpen) render();
+    }
     $('tvJoin').hidden = on; $('tvLive').hidden = !on;
     const dot = (cls) => '<span class="tv-dot ' + cls + '"></span>';
     if (state === 'live') $('tvState').innerHTML = dot('live') + 'On the TV: <b>' + esc(code) + '</b>';
@@ -1006,14 +1028,17 @@ function startGame() {
   S.phase = 'faceoff'; S.setupOpen = false; save(); render();
 }
 function continueGame() { readNames(); S.setupOpen = false; save(); render(); }
-function gotoSetup() { curtain(MSG_TO_GM, () => { S.setupOpen = true; S.gmView = false; save(); render(); }); }
+function gotoSetup() {
+  const go = () => { S.setupOpen = true; S.gmView = false; save(); render(); };
+  if (consoleMode()) go(); else curtain(MSG_TO_GM, go);
+}
 
 // ---------- sound ----------
 // All sounds are generated in code (Web Audio), so they work offline and need no sound files.
 const Sound = (() => {
   let ac = null, unlocked = false;
   function ctx() {
-    if (!S.sound) return null;
+    if (!S.sound || consoleMode()) return null;   // joined to a TV: the TV plays the sounds
     try {
       if (!ac) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; ac = new C(); }
       if (ac.state === 'suspended') ac.resume();
@@ -1239,6 +1264,7 @@ function playOrPass(pass) {
 const X_MS = 1500;
 let xTimer = null;
 function flashX(n) {
+  if (consoleMode()) return;
   const f = $('strikeFlash');
   f.innerHTML = '<div class="x">✕</div>'.repeat(Math.max(1, Math.min(3, n || 1)));
   f.classList.remove('active'); void f.offsetWidth; f.classList.add('active');
@@ -1386,11 +1412,18 @@ function renderBoard() {
   $('potLbl').textContent = (r.mult || 1) > 1 ? 'POT ×' + r.mult : 'POT';
   document.querySelectorAll('.mult button').forEach((b) => { b.classList.toggle('on', Number(b.dataset.mult) === (r.mult || 1)); b.disabled = r.over; });
   document.querySelectorAll('.sbox').forEach((b, i) => b.classList.toggle('on', i < r.strikes));
-  $('btnStrike').disabled = r.strikes >= 3 || r.over || !r.foDone;
+  if (consoleMode()) {
+    const c = busy ? null : guessContext();
+    $('btnStrike').disabled = !c;
+    $('btnStrike').textContent = !c ? '✗' : c.kind === 'fo' ? '✗ Not on board' : c.kind === 'steal' ? '✗ Steal missed' : '✗ Strike';
+  } else {
+    $('btnStrike').disabled = r.strikes >= 3 || r.over || !r.foDone;
+    $('btnStrike').textContent = 'STRIKE';
+  }
   $('btnRevealAll').disabled = !r.foDone && !r.over;
   document.querySelectorAll('.give').forEach((b) => { b.disabled = !r.foDone; });
   const st = $('bStatus'), stealing = r.steal && !r.steal.result;
-  const checkBtn = '<button class="primary" data-act="check">Check answer</button>';
+  const checkBtn = consoleMode() ? '<span class="hint">Tap the answer they gave, or ✗</span>' : '<button class="primary" data-act="check">Check answer</button>';
   let guessing = null;
   if (busy) {
     st.className = 'b-status survey';
@@ -1413,7 +1446,7 @@ function renderBoard() {
   } else if (stealing) {
     guessing = r.steal.team;
     st.className = 'b-status steal';
-    st.innerHTML = '<span>' + esc(tname(r.steal.team)) + ' can steal! One guess.</span>' + checkBtn + '<button class="small" id="btnStealMiss" data-act="stealmiss">Steal missed</button>';
+    st.innerHTML = '<span>' + esc(tname(r.steal.team)) + ' can steal! One guess.</span>' + checkBtn + (consoleMode() ? '' : '<button class="small" id="btnStealMiss" data-act="stealmiss">Steal missed</button>');
   } else if (r.over) {
     st.className = 'b-status over';
     const lastQ = S.qi >= S.questions.length - 1;
@@ -1440,8 +1473,9 @@ function renderBoard() {
   $('gmToggle').textContent = S.gmView ? 'Player view' : 'GM view';
   const slots = g.querySelectorAll('.slot');
   slots.forEach((el, i) => el.classList.toggle('revealed', r.revealed[i]));
-  if (S.gmView) {
+  if (S.gmView || consoleMode()) {
     g.classList.add('gm');
+    if (consoleMode()) { shown = r.revealed.slice(); pendingX = []; celebrate = false; }
   } else {
     // Leaving GM view (or normal play): snap known-flipped slots, then animate the ones players haven't seen.
     if (g.classList.contains('gm')) {
@@ -1474,7 +1508,7 @@ function renderBoard() {
 function render() {
   document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
   const onBoard = S.phase === 'board' && !S.setupOpen;
-  $('gmToggle').style.display = onBoard ? 'block' : 'none';
+  $('gmToggle').style.display = onBoard && !consoleMode() ? 'block' : 'none';
   if (!onBoard) document.body.classList.remove('gm');
   closeGm(); hideCurtain(); renderSoundBtns();
   if (S.phase === 'setup' || S.setupOpen) { $('setup').classList.add('active'); renderSetup(); }
@@ -1526,11 +1560,24 @@ $('curtain').addEventListener('click', () => { const n = curtainNext; hideCurtai
 
 $('grid').addEventListener('click', (e) => {
   const el = e.target.closest('.slot'); if (!el || el.classList.contains('empty')) return;
+  if (consoleMode()) {
+    // The GM sees every answer; a tap says "that's what they said". Face-off, play and steal are
+    // ruled exactly as Check answer would, with "Survey says…" on the TV. After the round it just shows it.
+    const i = Number(el.dataset.i);
+    if (busy || S.round.revealed[i]) return;
+    const c = guessContext();
+    if (c) playOut(c, i);
+    else if (doAction(ansLabel(i), () => reveal(i))) renderBoard();
+    return;
+  }
   if (!S.round.foDone || busy) return;   // face-off answers go through Check answer
   const i = Number(el.dataset.i);
   if (doAction(ansLabel(i), () => reveal(i))) renderBoard();
 });
-$('btnStrike').addEventListener('click', () => doAction('Strike', strike));
+$('btnStrike').addEventListener('click', () => {
+  if (!consoleMode()) { doAction('Strike', strike); return; }
+  const c = guessContext(); if (c && !busy) playOut(c, -1);   // the TV gets "Survey says…" then the X
+});
 $('btnUndo').addEventListener('click', undo);
 document.querySelectorAll('.mult button').forEach((b) => b.addEventListener('click', () => doAction('×' + b.dataset.mult, () => setMult(Number(b.dataset.mult)))));
 $('bStatus').addEventListener('click', (e) => {
