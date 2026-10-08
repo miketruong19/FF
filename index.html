@@ -825,6 +825,7 @@ const TV = (() => {
     }
     offer = null;
     showPhotos(); render(); paint(); syncAll(); toast('Game resumed');
+    fillTranslations();
   }
   // Each side pings; a line that has gone quiet for 25 s is treated as dropped.
   pingTimer = setInterval(() => {
@@ -886,6 +887,35 @@ const TV = (() => {
 // The question's Tagalog and Vietnamese lines, if the set has them.
 function trLines(q) {
   return (q.tl ? '<div><b>TL</b>' + esc(q.tl) + '</div>' : '') + (q.vi ? '<div><b>VI</b>' + esc(q.vi) + '</div>' : '');
+}
+
+// Saves made before a built-in set had its Tagalog and Vietnamese lines: fill them in from the set
+// for questions whose English text matches exactly. A translation already there (typed by the GM,
+// or from the set) is never replaced. Runs on load and after Resume; offline it uses the cached sets.
+async function fillTranslations() {
+  const qs = S.questions;
+  if (!qs.some((q) => !q.tl || !q.vi)) return false;
+  const known = new Map();
+  for (const set of BUILT_IN) {
+    try {
+      const r = await fetch(set.file);
+      if (!r.ok) continue;
+      for (const q of parseSheet(await r.text(), 'string').questions) if (q.tl || q.vi) known.set(q.q, q);
+    } catch (e) { /* not reachable or cached: try again next time */ }
+  }
+  if (S.questions !== qs) return false;   // the set was replaced meanwhile
+  let changed = false;
+  qs.forEach((q) => {
+    const k = known.get(q.q);
+    if (!k) return;
+    if (!q.tl && k.tl) { q.tl = k.tl; changed = true; }
+    if (!q.vi && k.vi) { q.vi = k.vi; changed = true; }
+  });
+  if (!changed) return false;
+  save();
+  // Redraw unless the GM is mid-ruling behind a cover; the TV gets the lines either way.
+  if (!$('curtain').classList.contains('active') && !$('gmPanel').classList.contains('active')) render(); else TV.changed();
+  return true;
 }
 
 // ---------- setup screen ----------
@@ -1652,6 +1682,7 @@ render();
 loadPhotos();
 TV.init();
 if (!hadSave) loadBuiltIn(0, true);   // first launch on this device: start with the game-night set
+else fillTranslations();
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }

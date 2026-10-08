@@ -299,6 +299,30 @@ try {
   console.log('    bytes sent by the iPads → ' + ['view', 'photo', 'backup', 'host', 'ping'].map(line).join(' · '));
   step('bytes logged');
 
+  // ---------- an old save from before the translations ----------
+  // Family favorites saved on the iPad before it had Tagalog and Vietnamese: a reload fills them in
+  // from the built-in set, keeps a line the GM typed, and leaves a home-made question alone.
+  const oldCtx = await context('ipad');
+  const old = await open(oldCtx, base + '/', 'old save');
+  await old.click('#sets button[data-set="1"]');
+  await old.waitForFunction(() => JSON.parse(localStorage.getItem('family-feud-state-v1')).questions.length === 21);
+  await old.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('family-feud-state-v1'));
+    s.questions.forEach((q) => { delete q.tl; delete q.vi; });
+    s.questions[0].tl = 'Sariling salin ng GM';
+    s.questions.push({ q: 'Name a homemade question', answers: [{ text: 'Yes', points: 50 }], mult: 1 });
+    localStorage.setItem('family-feud-state-v1', JSON.stringify(s));
+  });
+  await old.reload({ waitUntil: 'networkidle' });
+  await old.waitForFunction(() => JSON.parse(localStorage.getItem('family-feud-state-v1')).questions.filter((q) => q.vi).length === 21);
+  const filled = await old.evaluate(() => JSON.parse(localStorage.getItem('family-feud-state-v1')).questions);
+  assert.equal(filled[0].tl, 'Sariling salin ng GM', 'a translation the GM typed is kept');
+  assert.ok(filled[0].vi);
+  assert.equal(filled.slice(0, 21).filter((q) => q.tl && q.vi).length, 21);
+  assert.equal(filled[21].tl, undefined); assert.equal(filled[21].vi, undefined);
+  await oldCtx.close();
+  step('an old save without translations gets them on reload, keeps a line the GM typed, and leaves a home-made question alone');
+
   // ---------- the github.io build: no relay, no TV card ----------
   const plain = http.createServer(async (req, res) => {
     const p = new URL(req.url, 'http://x').pathname;
