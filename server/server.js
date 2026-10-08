@@ -29,6 +29,7 @@ const FILES = {
   '/game-night.csv': 'game-night.csv',
   '/filipino-vietnamese-family.csv': 'filipino-vietnamese-family.csv',
   '/family-questions.csv': 'family-questions.csv',
+  '/two-families.csv': 'two-families.csv',
   '/sample-questions.csv': 'sample-questions.csv',
 };
 const TYPES = {
