@@ -64,12 +64,12 @@ One Worker (`worker/`, `wrangler.jsonc`) serves the game's files and runs one Du
 
 ```
 npm install
-npx wrangler dev   # http://127.0.0.1:8787, the Workers runtime locally, no Cloudflare login needed
+npx wrangler dev --persist-to ../ff-wrangler-state   # http://127.0.0.1:8787, the Workers runtime locally, no login needed
 npx wrangler login
 npx wrangler deploy
 ```
 
-To test against it: `cd server && BASE=http://127.0.0.1:8787 npm run e2e`.
+Keep `--persist-to` pointing outside the repo. The site's files are the repo root, so local state written inside it makes `wrangler dev` reload in a loop. To test against it: `cd server && BASE=http://127.0.0.1:8787 npm run e2e`.
 
 ### The local relay (fallback)
 
