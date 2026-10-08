@@ -1,0 +1,24 @@
+// PAMILY PHEUD on Cloudflare Workers (free plan): the game's files plus TV-mode rooms.
+//   npx wrangler dev      local, no Cloudflare login needed (http://127.0.0.1:8787)
+//   npx wrangler deploy   publish (after `npx wrangler login`)
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pamily-pheud",
+  "main": "worker/index.js",
+  "compatibility_date": "2025-10-01",
+  "assets": {
+    // The game's own files at the repo root; .assetsignore keeps everything else out.
+    "directory": "./",
+    "binding": "ASSETS",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none",
+    // Only the room API and the socket go to the Worker; every file is served directly.
+    "run_worker_first": ["/api/*", "/ws"]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "FFRoom" }]
+  },
+  // SQLite-backed Durable Objects are on the Workers free plan.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["FFRoom"] }],
+  "observability": { "enabled": true }
+}
