@@ -23,9 +23,13 @@ const results = [];
 const step = (name) => { results.push(name); console.log('  ✓ ' + name); };
 
 const listen = (server) => new Promise((res) => server.listen(0, '127.0.0.1', () => res(server.address().port)));
-const { server } = createServer({ log: () => {} });
-const port = await listen(server);
-const base = `http://127.0.0.1:${port}`;
+// BASE=http://127.0.0.1:8787 runs everything against a server already running (e.g. `wrangler dev`);
+// without it, the test starts its own Node relay.
+const server = process.env.BASE ? null : createServer({ log: () => {} }).server;
+const base = process.env.BASE ? process.env.BASE.replace(/\/$/, '') : `http://127.0.0.1:${await listen(server)}`;
+const port = new URL(base).port;
+const wsBase = base.replace(/^http/, 'ws');
+console.log('  against ' + base + (server ? ' (Node relay, started by the test)' : ''));
 if (SHOTS) await mkdir(SHOTS, { recursive: true });
 
 const browser = await chromium.launch({ executablePath: CHROME, headless: true });
@@ -57,7 +61,7 @@ const ipadSent = [];
 // The iPad's socket goes through a gate, so a dropped line can be simulated exactly.
 async function gateIpad(page) {
   const gate = { cut: false, live: new Set() };
-  await page.routeWebSocket(/\/ws$/, (ws) => {
+  await page.routeWebSocket(/\/ws(\?|$)/, (ws) => {
     if (gate.cut) { ws.close(); return; }
     const srv = ws.connectToServer();
     const pair = { ws, srv };
@@ -206,7 +210,7 @@ try {
   await other.waitForSelector('#tvCard:not([hidden])');
   await other.fill('#tvCode', code); await other.click('#btnTvJoin');
   await other.waitForFunction(() => document.getElementById('tvHint').textContent.includes('already has a game master'));
-  const raw = new WebSocket(`ws://127.0.0.1:${port}/ws`);
+  const raw = new WebSocket(`${wsBase}/ws?code=${code}`);
   const rawGot = [];
   await new Promise((res) => raw.on('open', res));
   raw.on('message', (m) => rawGot.push(JSON.parse(m)));
@@ -214,7 +218,7 @@ try {
   raw.send(JSON.stringify({ t: 'view', view: { phase: 'end', teams: [{ name: 'Hacked', score: 999 }, { name: 'x', score: 0 }] } }));
   await new Promise((r) => setTimeout(r, 400));
   assert.deepEqual(rawGot[0], { t: 'error', reason: 'taken' });
-  const raw2 = new WebSocket(`ws://127.0.0.1:${port}/ws`);
+  const raw2 = new WebSocket(`${wsBase}/ws?code=${code}`);
   await new Promise((res) => raw2.on('open', res));
   raw2.send(JSON.stringify({ t: 'tv', code }));
   raw2.send(JSON.stringify({ t: 'view', view: { phase: 'end', teams: [{ name: 'Hacked', score: 999 }, { name: 'x', score: 0 }] } }));
@@ -408,6 +412,6 @@ try {
   process.exitCode = 1;
 } finally {
   await browser.close();
-  server.close();
+  if (server) server.close();
   setTimeout(() => process.exit(), 200);
 }

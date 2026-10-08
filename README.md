@@ -44,7 +44,7 @@ Opening `index.html` straight from the Files app does not work well in Safari, s
 
 ## TV mode
 
-The TV shows the board while the GM runs the game from the iPad, Jackbox-style. It works at **https://ff.eventurelog.ca**, which a small relay on the host PC serves through a Cloudflare tunnel. The github.io copy stays the solo version with no TV.
+The TV shows the board while the GM runs the game from the iPad, Jackbox-style. It works at **https://ff.eventurelog.ca**, which a Cloudflare Worker serves, with no PC needed. The github.io copy stays the solo version with no TV.
 
 1. On the TV's browser (a laptop on HDMI with Chrome full screen is best), open **ff.eventurelog.ca/tv**. It shows a 4-letter game code. Click the screen once to turn on sound.
 2. On the iPad, open **ff.eventurelog.ca**. Under **📺 TV**, type the code and tap **Connect**. That iPad is now the game master, and only it can drive this game.
@@ -58,17 +58,32 @@ What to know:
 - **Photos** go to the TV once, shrunk to 256 pixels. They're held only in the room while it lasts, which is 12 hours after it was last used.
 - Several games can run at once, each with its own code.
 
-Running the relay (on the PC the tunnel points at):
+### Hosting on Cloudflare
+
+One Worker (`worker/`, `wrangler.jsonc`) serves the game's files and runs one Durable Object per game code. It uses the same `shared/room.js` room logic as the Node relay, with hibernating WebSockets, and it fits the free plan. A room is dropped 12 hours after it was last used. `.assetsignore` keeps the code, tests and docs off the public site.
+
+```
+npm install
+npx wrangler dev   # http://127.0.0.1:8787, the Workers runtime locally, no Cloudflare login needed
+npx wrangler login
+npx wrangler deploy
+```
+
+To test against it: `cd server && BASE=http://127.0.0.1:8787 npm run e2e`.
+
+### The local relay (fallback)
+
+`server/` runs the same thing on any PC with Node. It's useful if Cloudflare is ever unavailable, or with a tunnel.
 
 ```
 cd server
 npm install
-npm start          # http://127.0.0.1:8090, local only; the tunnel brings ff.eventurelog.ca here
+npm start          # http://127.0.0.1:8090, local only
 npm test           # room logic
 npm run e2e        # two browsers: a full round, a dropped line, Resume, two rooms (needs Chrome)
 ```
 
-It listens on 127.0.0.1 only, so nothing on the local network can reach it and Windows doesn't ask about the firewall. Rooms live in memory, so restarting the relay means a new code on the TV. The room logic (`shared/room.js`) has no networking in it, so a Cloudflare Worker could reuse it later.
+It listens on 127.0.0.1 only, so nothing on the local network can reach it and Windows doesn't ask about the firewall. Its rooms live in memory, so restarting it means a new code on the TV.
 
 ## Team photos
 

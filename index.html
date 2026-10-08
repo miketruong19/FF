@@ -765,7 +765,8 @@ const TV = (() => {
     if (ws) { ws.onclose = null; try { ws.close(); } catch (e) {} ws = null; }
     state = tries ? 'retry' : 'connecting'; paint();
     let sock;
-    try { sock = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'); } catch (e) { return lost(); }
+    // The code in the address routes the socket to its room on Cloudflare; the Node relay ignores it.
+    try { sock = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws?code=' + code); } catch (e) { return lost(); }
     ws = sock; heardAt = Date.now();
     sock.onopen = () => { heardAt = Date.now(); sock.send(JSON.stringify(key ? { t: 'host', code, key } : { t: 'host', code })); };
     sock.onmessage = (e) => { heardAt = Date.now(); let m; try { m = JSON.parse(e.data); } catch (x) { return; } onMessage(m); };
