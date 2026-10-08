@@ -1,7 +1,8 @@
 // Service worker: keeps a copy of the app so it works with no network.
 // Strategy: try the network first (so updates show right away), fall back to the saved copy when offline.
-const CACHE = 'family-feud-v9';
-const FILES = ['./', './index.html', './xlsx.mini.min.js', './manifest.webmanifest',
+const CACHE = 'family-feud-v10';
+// './' is the app on every host; Cloudflare redirects /index.html to /, so it isn't listed separately.
+const FILES = ['./', './xlsx.mini.min.js', './manifest.webmanifest',
   './game-night.csv', './filipino-vietnamese-family.csv', './family-questions.csv', './two-families.csv'];
 
 self.addEventListener('install', (e) => {
@@ -22,8 +23,11 @@ self.addEventListener('fetch', (e) => {
   if (path.includes('/api/') || path.endsWith('/ws')) return;
   e.respondWith(
     fetch(e.request).then((res) => {
-      if (res && res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); }
+      if (res && res.ok && !res.redirected) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); }
       return res;
-    }).catch(() => caches.match(e.request, { ignoreSearch: true }).then((hit) => hit || Response.error()))
+    }).catch(() => caches.match(e.request, { ignoreSearch: true })
+      // Offline, any page of the app (a Home Screen launch, /index.html) opens the saved app.
+      .then((hit) => hit || (e.request.mode === 'navigate' ? caches.match('./') : null))
+      .then((hit) => hit || Response.error()))
   );
 });
