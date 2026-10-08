@@ -339,7 +339,7 @@ function drawFaceoff(v, qn) {
     z.querySelector('.sub').textContent = fo.stage === 'buzzed' && fo.winner === s && fo.lead > 0 ? 'by ' + fo.lead + ' ms' : '';
   });
   $('fMsg').textContent = fo.stage === 'armed' ? 'Buzz! First touch wins.' : fo.stage === 'buzzed' ? tname(fo.winner) + ' buzzed first!'
-    : fo.stage === 'countdown' ? 'The question shows on 1…' : 'One player from each team to the buzzers';
+    : fo.stage === 'countdown' ? (v.veiled ? 'The question shows on 1…' : 'Buzzers go live on 1…') : 'One player from each team to the buzzers';
   if (prev && prev.phase === 'faceoff' && prev.fo) {
     if (fo.stage === 'countdown' && (prev.fo.stage !== 'countdown' || prev.fo.cd !== fo.cd)) Sound.tick(false);
     if (fo.stage === 'armed' && prev.fo.stage === 'countdown') Sound.tick(true);
