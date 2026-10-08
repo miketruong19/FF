@@ -17,6 +17,7 @@ No server, no login. Once loaded it works offline.
 | `game-night.csv` | Default set, about an hour: 15 questions; last five are ×2 and ×3 |
 | `filipino-vietnamese-family.csv` | "Family favorites": 21 more questions, none repeated from Game night |
 | `family-questions.csv` | 24 general, everyday family-friendly questions |
+| `two-families.csv` | "Two families": 15 short, low-English questions for a Filipino family from Niagara Falls and a Vietnamese family from Toronto |
 
 ## Put it on the iPad
 
@@ -95,6 +96,13 @@ Question | Answer 1 | Points 1 | Answer 2 | Points 2 | ... | Answer 8 | Points 8
 ```
 
 Multiplier is optional: 1, 2 or 3 (blank means 1).
+
+Three more optional columns can follow, in this order or anywhere a header row names them:
+
+- **Question (Tagalog)** and **Question (Vietnamese)**: shown smaller under the English question on the TV and the iPad.
+- **Answer hints (TL / VI)**: one hint per answer, in board order, separated by `|`, each written `Tagalog / Vietnamese`, e.g. `pera / tiền | damit / quần áo`. Either side can be blank. The board stays English. These show only on the iPad's GM console (in TV mode), so the GM can match an answer shouted in either language. They never go to the TV.
+
+Sheets without these columns load as before.
 
 Rows with no question, no answers, or non-number points are skipped and listed on the setup screen.
 Rows whose points total more than 100 are skipped. Rows not in descending order load with a warning.

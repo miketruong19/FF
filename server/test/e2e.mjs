@@ -323,6 +323,59 @@ try {
   await oldCtx.close();
   step('an old save without translations gets them on reload, keeps a line the GM typed, and leaves a home-made question alone');
 
+  // ---------- Two families, and the GM-only answer hints ----------
+  // The board stays English; Tagalog/Vietnamese hints show under each answer on the GM console only,
+  // and never reach the TV: not on its screen, not in any frame it receives.
+  const tvHCtx = await context('tv');
+  const tvH = await tvHCtx.newPage();          // listen before the page opens its socket
+  const hintFrames = [];
+  tvH.on('websocket', (ws) => ws.on('framereceived', (f) => hintFrames.push(String(f.payload))));
+  tvH.on('pageerror', (e) => errors.push('tv (hints): ' + e.message));
+  await tvH.goto(base + '/tv', { waitUntil: 'networkidle' });
+  const codeH = await tvCode(tvH);
+  const ipHCtx = await context('ipad');
+  const ipH = await open(ipHCtx, base + '/', 'ipad (hints)');
+  await ipH.click('#sets button[data-set="1"]');
+  await ipH.waitForFunction(() => JSON.parse(localStorage.getItem('family-feud-state-v1')).questions.length === 21);
+  const favHints = await ipH.evaluate(() => JSON.parse(localStorage.getItem('family-feud-state-v1')).questions.flatMap((q) => q.answers.filter((a) => a.hint)).length);
+  await ipH.click('#sets button[data-set="3"]');
+  await ipH.waitForFunction(() => /15 questions \(from Two families\)/.test(document.getElementById('fileInfo').textContent));
+  assert.equal(await ipH.textContent('#flags'), '');
+  const twoBank = await ipH.evaluate(() => JSON.parse(localStorage.getItem('family-feud-state-v1')).questions);
+  const twoHints = twoBank.flatMap((q) => q.answers.map((a) => a.hint).filter(Boolean));
+  assert.ok(favHints > 100 && twoHints.length > 60, `hints loaded: ${favHints} and ${twoHints.length}`);
+  assert.ok(twoBank.every((q) => q.tl && q.vi));
+  await ipH.fill('#tvCode', codeH); await ipH.click('#btnTvJoin');
+  await ipH.waitForFunction(() => document.getElementById('tvState').textContent.includes('On the TV'));
+  await ipH.click('#btnStart');
+  await ipH.click('#btnArm');
+  await tvH.waitForSelector('#faceoff .zone.armed');
+  await ipH.locator('.zone[data-side="0"]').dispatchEvent('pointerdown');
+  await ipH.waitForSelector('#board.active');
+  // On the console: each answer's hint is visible under it.
+  const firstHint = await ipH.$eval('#grid .slot[data-i="0"] .hint', (h) => ({ text: h.textContent, shown: getComputedStyle(h).display !== 'none' }));
+  assert.ok(firstHint.shown && firstHint.text.includes('áo khoác'), JSON.stringify(firstHint));
+  await judge(ipH, 0);
+  await tvH.waitForFunction(() => document.querySelectorAll('#grid .slot.flipped').length === 1);
+  await ipH.click('#bStatus [data-act="play"]');
+  await judge(ipH, 1); await judge(ipH, 3); await judge(ipH, -1);
+  await tvH.waitForFunction(() => document.querySelectorAll('#grid .slot.flipped').length === 3);
+  await shot(ipH, 'ipad-5-hints');
+  // On the TV: no hint element, no hint text on screen, no hint in any frame.
+  assert.equal(await tvH.$$eval('.hint', (h) => h.length), 0);
+  const tvText = await tvH.evaluate(() => document.body.innerText);
+  for (const h of twoHints) {
+    assert.ok(!hintFrames.some((f) => f.includes(JSON.stringify(h).slice(1, -1))), `hint "${h}" reached the TV`);
+    const tl = h.split('/')[0].trim();
+    if (tl.length >= 4 && !twoBank.some((q) => q.tl.toLowerCase().includes(tl.toLowerCase()))) assert.ok(!tvText.toLowerCase().includes(tl.toLowerCase()), `hint word "${tl}" on the TV`);
+  }
+  assert.ok(hintFrames.filter((f) => f.includes('"view"')).length >= 5, `the TV's frames were captured (${hintFrames.length})`);
+  assert.ok(!hintFrames.some((f) => f.includes('"hint"')), 'a hint field reached the TV');
+  // Export keeps the column; re-import is covered by the parser reading the same header.
+  await ipH.click('#btnBoardSetup'); await ipH.waitForSelector('#btnExport');
+  await ipHCtx.close(); await tvHCtx.close();
+  step(`Two families loads (15, with TL/VI); GM hints show on the console only (${favHints} in Family favorites, ${twoHints.length} in Two families), and none reached the TV's screen or its ${hintFrames.length} frames`);
+
   // ---------- the github.io build: no relay, no TV card ----------
   const plain = http.createServer(async (req, res) => {
     const p = new URL(req.url, 'http://x').pathname;

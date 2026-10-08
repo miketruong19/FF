@@ -75,6 +75,11 @@ input[type=text] {
 body.console #gmToggle, body.console .gm-banner, body.console #strikeFlash, body.console .btn-sound { display: none !important; }
 body.console .grid .slot { cursor: pointer; }
 body.console .grid.gm .back { font-size: 16px; }
+/* GM-only answer hints (Tagalog / Vietnamese), so a shout in either language can be matched. Console only. */
+.slot .hint { display: none; }
+body.console .grid.gm .slot .hint { display: block; margin-top: 3px; font-size: 12px; font-weight: 600; text-transform: none; color: #a5b4c8; line-height: 1.25; }
+body.console .grid.gm .slot.revealed .hint { color: #bbf7d0; }
+body.console .grid.gm .slot .hint i { font-style: normal; font-size: 10px; font-weight: 800; letter-spacing: .06em; color: #64748b; margin-right: 3px; }
 body.console .grid.gm .slot:not(.revealed):not(.empty) .back { background: #273449; border-color: #3b82f6; }
 body.console .grid.gm .slot:not(.revealed):not(.empty):active .back { filter: brightness(1.3); }
 body.console .b-bottom .team { padding: 6px 10px; gap: 8px; }
@@ -349,6 +354,7 @@ body.gm .gm-banner { display: block; }
         <button class="small" data-set="0">🎉 Game night (about 1 hour)</button>
         <button class="small" data-set="1">🍚 Family favorites (21 more)</button>
         <button class="small" data-set="2">🏠 Everyday family</button>
+        <button class="small" data-set="3">🍁 Two families</button>
       </div>
       <div class="hint">One row per question, best answer first. Columns:
         <code>Question | Answer 1 | Points 1 | … | Answer 8 | Points 8 | Multiplier</code>. Multiplier is optional: 1, 2 or 3.
@@ -532,7 +538,7 @@ function parseRows(rows) {
   let seenHeader = false;
   // The question in Tagalog and Vietnamese: optional columns, right after Multiplier unless a header row
   // names them elsewhere. Sheets without them load as before.
-  let colTl = 2 + 2 * MAX, colVi = 3 + 2 * MAX;
+  let colTl = 2 + 2 * MAX, colVi = 3 + 2 * MAX, colHint = 4 + 2 * MAX;
   rows.forEach((r, idx) => {
     const rowNo = idx + 1;
     const cells = (r || []).map((c) => (c == null ? '' : String(c).trim()));
@@ -541,18 +547,22 @@ function parseRows(rows) {
     // header row: first non-empty row whose first cell says "question" and has no numeric points
     if (!seenHeader && !questions.length && /question/i.test(q) && !isNum(cells[2])) {
       seenHeader = true;
-      cells.forEach((c, i) => { if (/tagalog|filipino/i.test(c)) colTl = i; else if (/vietnam|việt/i.test(c)) colVi = i; });
+      // "Answer hints (TL / VI)" mentions both languages, so it's matched first.
+      cells.forEach((c, i) => { if (/hint/i.test(c)) colHint = i; else if (/tagalog|filipino/i.test(c)) colTl = i; else if (/vietnam|việt/i.test(c)) colVi = i; });
       return;
     }
     seenHeader = true;
     const problems = [], warns = [], answers = [];
+    const hints = String(cells[colHint] || '').split('|').map((h) => h.trim());   // GM-only, per answer slot
     if (!q) problems.push('no question text');
     for (let k = 0; k < MAX; k++) {
       const a = cells[1 + 2 * k] || '', p = cells[2 + 2 * k] || '';
       if (!a && !p) continue;
       if (!a) { problems.push('answer ' + (k + 1) + ' is blank but has points'); continue; }
       if (!isNum(p)) { problems.push('answer ' + (k + 1) + ' ("' + a + '") has bad points "' + p + '"'); continue; }
-      answers.push({ text: a, points: Math.round(Number(p)) });
+      const ans = { text: a, points: Math.round(Number(p)) };
+      if (hints[k] && hints[k].replace(/\//g, '').trim()) ans.hint = hints[k];
+      answers.push(ans);
     }
     if (!answers.length && q) problems.push('no answers');
     if (problems.length) { flags.push({ row: rowNo, level: 'bad', msg: 'Row ' + rowNo + ' skipped: ' + problems.join('; ') }); return; }
@@ -603,6 +613,7 @@ const BUILT_IN = [
   { file: 'game-night.csv', name: 'Game night' },
   { file: 'filipino-vietnamese-family.csv', name: 'Family favorites' },
   { file: 'family-questions.csv', name: 'Everyday family' },
+  { file: 'two-families.csv', name: 'Two families' },
 ];
 async function loadBuiltIn(i, quiet) {
   const set = BUILT_IN[i];
@@ -884,6 +895,13 @@ const TV = (() => {
   };
 })();
 
+// A GM-only answer hint, "Tagalog / Vietnamese", as small labelled words. Never sent to the TV.
+function hintHtml(h) {
+  const [tl, vi] = String(h).split('/').map((s) => (s || '').trim());
+  const parts = (tl ? '<i>TL</i>' + esc(tl) : '') + (tl && vi ? ' · ' : '') + (vi ? '<i>VI</i>' + esc(vi) : '');
+  return parts ? '<span class="hint">' + parts + '</span>' : '';
+}
+
 // The question's Tagalog and Vietnamese lines, if the set has them.
 function trLines(q) {
   return (q.tl ? '<div><b>TL</b>' + esc(q.tl) + '</div>' : '') + (q.vi ? '<div><b>VI</b>' + esc(q.vi) + '</div>' : '');
@@ -894,7 +912,7 @@ function trLines(q) {
 // or from the set) is never replaced. Runs on load and after Resume; offline it uses the cached sets.
 async function fillTranslations() {
   const qs = S.questions;
-  if (!qs.some((q) => !q.tl || !q.vi)) return false;
+  if (!qs.length) return false;
   const known = new Map();
   for (const set of BUILT_IN) {
     try {
@@ -910,9 +928,15 @@ async function fillTranslations() {
     if (!k) return;
     if (!q.tl && k.tl) { q.tl = k.tl; changed = true; }
     if (!q.vi && k.vi) { q.vi = k.vi; changed = true; }
+    q.answers.forEach((a) => {       // answer hints, for answers whose text matches exactly
+      if (a.hint) return;
+      const ka = k.answers.find((x) => x.text === a.text);
+      if (ka && ka.hint) { a.hint = ka.hint; changed = true; }
+    });
   });
   if (!changed) return false;
   save();
+  builtFor = -1;   // the board's answer tiles carry the hints
   // Redraw unless the GM is mid-ruling behind a cover; the TV gets the lines either way.
   if (!$('curtain').classList.contains('active') && !$('gmPanel').classList.contains('active')) render(); else TV.changed();
   return true;
@@ -993,12 +1017,13 @@ function moveQ(i, d) {
 function exportCsv() {
   const cell = (v) => { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
   const head = ['Question']; for (let k = 1; k <= MAX; k++) head.push('Answer ' + k, 'Points ' + k);
-  head.push('Multiplier', 'Question (Tagalog)', 'Question (Vietnamese)');
+  head.push('Multiplier', 'Question (Tagalog)', 'Question (Vietnamese)', 'Answer hints (TL / VI)');
   const lines = [head.join(',')];
   S.questions.forEach((q) => {
     const r = [cell(q.q)];
     for (let k = 0; k < MAX; k++) { const a = q.answers[k]; r.push(a ? cell(a.text) : '', a ? a.points : ''); }
-    r.push(q.mult || 1, cell(q.tl || ''), cell(q.vi || ''));
+    const hints = q.answers.map((a) => a.hint || ''); while (hints.length && !hints[hints.length - 1]) hints.pop();
+    r.push(q.mult || 1, cell(q.tl || ''), cell(q.vi || ''), cell(hints.join(' | ')));
     lines.push(r.join(','));
   });
   const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv' });
@@ -1067,6 +1092,8 @@ function saveEditor() {
   const r = readEditor();
   if (r.errors.length) { editorCheck(); return; }
   r.answers.sort((a, b) => b.points - a.points);   // rank order: top answer first
+  const old = edIndex >= 0 ? S.questions[edIndex] : null;   // keep GM hints on answers whose text didn't change
+  if (old) r.answers.forEach((a) => { const o = old.answers.find((x) => x.text === a.text); if (o && o.hint) a.hint = o.hint; });
   const item = { q: r.q, answers: r.answers, mult: edMultVal };
   const tl = $('edQtl').value.trim(), vi = $('edQvi').value.trim();
   if (tl) item.tl = tl;
@@ -1447,7 +1474,7 @@ function buildBoard() {
     el.className = 'slot' + (a ? '' : ' empty');
     el.dataset.i = i;
     el.innerHTML = '<div class="inner"><div class="face front"><span>' + (i + 1) + '</span></div>' +
-      '<div class="face back"><span class="ans">' + (a ? esc(a.text) : '') + '</span><span class="pts">' + (a ? a.points : '') + '</span></div></div>';
+      '<div class="face back"><span class="ans">' + (a ? esc(a.text) : '') + (a && a.hint ? hintHtml(a.hint) : '') + '</span><span class="pts">' + (a ? a.points : '') + '</span></div></div>';
     g.appendChild(el);
   }
   builtFor = S.qi;
