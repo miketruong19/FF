@@ -121,6 +121,20 @@ body { background: var(--bg); color: var(--text); overflow: hidden; cursor: defa
 #end .eteam.won .photo { height: 34vh; max-width: 64vh; }
 #end .eteam .n { font-size: 5vh; font-weight: 900; }
 #end .eteam .s { font-size: 11vh; font-weight: 900; line-height: 1; }
+/* The game's winner, full screen: their photo whole (contain) over a blurred, darkened copy of
+   itself, with the result on a dark band along the bottom. A tie, or a winner with no photo,
+   keeps the two-team screen above. */
+#champ { display: none; position: absolute; inset: 0; overflow: hidden; background: #000; }
+#end.champ #champ { display: block; }
+#end.champ > .title, #end.champ > .winner, #end.champ > .scores { display: none; }
+#champ .bg { position: absolute; inset: -6vh; width: calc(100% + 12vh); height: calc(100% + 12vh); object-fit: cover; filter: blur(5vh) brightness(.45) saturate(1.2); }
+#champ .pic { position: absolute; inset: 0 0 22vh; width: 100%; height: calc(100% - 22vh); object-fit: contain; padding: 3vh 3vh 0; }
+#champ .band { position: absolute; left: 0; right: 0; bottom: 0; height: 26vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2vh;
+  background: linear-gradient(to top, rgba(2,6,23,.96) 60%, rgba(2,6,23,0)); text-align: center; padding: 0 4vh; }
+#champ .who { font-size: 11vh; font-weight: 900; color: var(--gold); line-height: 1; text-shadow: 0 .6vh 3vh rgba(0,0,0,.9); text-wrap: balance; }
+#champ .final { font-size: 4.4vh; font-weight: 800; color: #f8fafc; text-shadow: 0 .4vh 2vh rgba(0,0,0,.9); font-variant-numeric: tabular-nums; }
+#champ .final b { color: var(--gold); }
+#champ .final span { color: #94a3b8; margin: 0 1.6vh; }
 
 /* ---- overlays ---- */
 /* The show's strike: one, two or three big red X's for about 1.5 s. */
@@ -186,6 +200,7 @@ body { background: var(--bg); color: var(--text); overflow: hidden; cursor: defa
     <div class="eteam t0"><img class="photo" data-photo="0" alt="" hidden><div class="n" data-name="0"></div><div class="s" data-score="0"></div></div>
     <div class="eteam t1"><img class="photo" data-photo="1" alt="" hidden><div class="n" data-name="1"></div><div class="s" data-score="1"></div></div>
   </div>
+  <div id="champ"><img class="bg" alt=""><img class="pic" alt=""><div class="band"><div class="who" id="cWho"></div><div class="final" id="cFinal"></div></div></div>
 </section>
 
 <div id="flash"></div>
@@ -275,7 +290,7 @@ function onMessage(m) {
   }
   if (m.t === 'error' && m.reason === 'nocode') { if (ws) { ws.onclose = null; ws.close(); ws = null; } newRoom(); return; }
   if (m.t === 'host') { hostOnline = m.online; everHost = everHost || m.online; draw(); return; }
-  if (m.t === 'photo') { photos[m.team] = m.data; showPhotos(); return; }
+  if (m.t === 'photo') { photos[m.team] = m.data; if (view && view.phase === 'end') draw(); else showPhotos(); return; }
   if (m.t === 'view') { prev = view; view = m.view; draw(); }
 }
 setInterval(() => {
@@ -331,6 +346,14 @@ function draw() {
     const a = v.teams[0].score, b = v.teams[1].score;
     $('eWinner').textContent = a === b ? 'It’s a tie!' : 'Winner: ' + tname(a > b ? 0 : 1) + '!';
     document.querySelectorAll('#end .eteam').forEach((el, t) => el.classList.toggle('won', v.teams[t].score > v.teams[1 - t].score));
+    // A clear winner with a photo takes the whole screen.
+    const w = a === b ? null : a > b ? 0 : 1, champ = w != null && photos[w];
+    $('end').classList.toggle('champ', !!champ);
+    if (champ) {
+      for (const sel of ['#champ .bg', '#champ .pic']) { const im = document.querySelector(sel); if (im.getAttribute('src') !== photos[w]) im.src = photos[w]; }
+      $('cWho').textContent = 'Winner: ' + tname(w) + '!';
+      $('cFinal').innerHTML = '<b>' + esc(tname(w)) + ' ' + v.teams[w].score + '</b><span>·</span>' + esc(tname(1 - w)) + ' ' + v.teams[1 - w].score;
+    }
     if (prev && prev.phase !== 'end') Sound.win();
     return;
   }

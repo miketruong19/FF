@@ -710,8 +710,8 @@ function showPhotos() {
 // small snapshot of what the players can see after every change: answers only once revealed, never
 // the GM's list. Photos go once, shrunk to 256px. If the line drops, the game carries on here and the
 // TV catches up from the next snapshot. The room also keeps a backup of the game for Resume.
-const TV_PHOTO_SIDE = 768;
-const TV_PHOTO_MAX = 180 * 1024;   // characters of data: URL; the room refuses more (shared/room.js LIMITS.photo)
+const TV_PHOTO_SIDE = 1024;   // the winner's photo fills the TV at the end
+const TV_PHOTO_MAX = 300 * 1024;   // characters of data: URL; the room refuses more (shared/room.js LIMITS.photo)
 // Joined to a TV room (even while reconnecting): the iPad is the GM console, the TV the game screen.
 const consoleMode = () => document.body.classList.contains('console');
 let tvX = 0, tvXn = 1;   // counts the X flashes (and how many X's the last one showed) (strikes, face-off misses, missed steals), so the TV flashes each once
