@@ -1,6 +1,6 @@
 // Service worker: keeps a copy of the app so it works with no network.
 // Strategy: try the network first (so updates show right away), fall back to the saved copy when offline.
-const CACHE = 'family-feud-v10';
+const CACHE = 'family-feud-v11';
 // './' is the app on every host; Cloudflare redirects /index.html to /, so it isn't listed separately.
 const FILES = ['./', './xlsx.mini.min.js', './manifest.webmanifest',
   './game-night.csv', './filipino-vietnamese-family.csv', './family-questions.csv', './two-families.csv'];
