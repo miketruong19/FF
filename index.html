@@ -304,6 +304,20 @@ table.qs .tot.bad { color: var(--red); font-weight: 700; }
 #end .e-name { font-size: 22px; font-weight: 800; }
 #end .e-score { font-size: 56px; font-weight: 900; }
 #end .e-actions { display: flex; gap: 12px; margin-top: 10px; }
+/* After a buzz on a TV game, the iPad is still between the players: a cover, in the buzzing
+   team's colour, until the game master holds "Show answers". The answers aren't on the page
+   until then. */
+#cover { flex-direction: column; align-items: center; justify-content: center; gap: 22px; text-align: center; padding: 32px; }
+#cover.t0 { background: var(--a-dark); } #cover.t1 { background: var(--b-dark); }
+#cover .cv-who { font-size: min(9vw, 64px); font-weight: 900; line-height: 1.05; max-width: 900px; text-wrap: balance; }
+#cover .cv-sub { font-size: 20px; font-weight: 700; color: rgba(255,255,255,.8); max-width: 560px; }
+#btnShowAnswers { position: relative; overflow: hidden; min-height: 72px; min-width: min(80vw, 360px); font-size: 22px; font-weight: 900;
+  background: rgba(0,0,0,.35); border: 3px solid rgba(255,255,255,.85); border-radius: 18px; color: #fff; touch-action: none; user-select: none; -webkit-user-select: none; }
+#btnShowAnswers .fill { position: absolute; inset: 0; width: 0; background: rgba(255,255,255,.28); }
+#btnShowAnswers.holding .fill { width: 100%; transition: width var(--hold, .9s) linear; }
+#btnShowAnswers span { position: relative; }
+#cover .cv-undo { background: rgba(0,0,0,.3); }
+#cover [hidden] { display: none; }
 #curtain {
   display: none; position: fixed; inset: 0; z-index: 70; background: var(--bg);
   flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; gap: 14px;
@@ -480,6 +494,12 @@ body.gm .gm-banner { display: block; }
   <div class="gm-actions"><button id="gmOk" class="primary" disabled>Pick an answer</button><button id="gmCancel">Cancel</button></div>
 </div></div>
 
+<section id="cover" class="screen" aria-live="polite">
+  <div class="cv-who" id="coverWho"></div>
+  <div class="cv-sub">Turn the iPad to you, then hold the button to see the answers.</div>
+  <button id="btnShowAnswers" type="button"><i class="fill"></i><span>Hold to show answers</span></button>
+  <button id="btnCoverUndo" class="small cv-undo" type="button">↶ Undo the buzz</button>
+</section>
 <div id="curtain"><div class="c-icon" id="curtainIcon">🔄</div><div class="c-msg" id="curtainMsg"></div><div class="c-sub" id="curtainSub">Tap anywhere when it's safe</div><button id="curtainBack" class="small">↩ Change ruling</button></div>
 <div id="toast"></div>
 <div id="strikeFlash"></div>
@@ -1214,6 +1234,9 @@ function arm() {
 function zoneTap(side, ts) {
   const fo = S.round.fo;
   if (fo.stage === 'armed') {
+    // On a TV game the next screen is the answer list, and the iPad is still between the
+    // players: cover it until the game master asks for the answers. The buzz can be undone.
+    if (consoleMode()) { undoStack.push({ label: 'Buzz', data: snap() }); renderUndo(); fo.cover = true; }
     fo.stage = 'buzzed'; fo.winner = side; buzzT1 = ts; fo.lead = null;
     Sound.buzz(side);
     save(); renderFaceoff();
@@ -1609,8 +1632,32 @@ function render() {
   if (S.phase === 'setup' || S.setupOpen) { $('setup').classList.add('active'); renderSetup(); }
   else if (S.phase === 'faceoff') { $('faceoff').classList.add('active'); renderFaceoff(); }
   else if (S.phase === 'end') { $('end').classList.add('active'); renderEnd(); }
+  else if (covered()) { $('cover').classList.add('active'); renderCover(); }
   else { $('board').classList.add('active'); renderBoard(); }
 }
+
+// ---------- the cover after a buzz (TV games) ----------
+const covered = () => consoleMode() && S.phase === 'board' && !S.setupOpen && !!S.round.fo.cover && !S.round.foDone;
+const HOLD_MS = () => (fast() ? 150 : 900);
+function renderCover() {
+  const t = S.round.fo.winner;
+  $('cover').classList.toggle('t0', t === 0); $('cover').classList.toggle('t1', t === 1);
+  $('coverWho').textContent = tname(t) + ' buzzed first!';
+  $('btnCoverUndo').hidden = !undoStack.length;
+  // The answers aren't on the page while it's covered: the board is built when it opens.
+  $('grid').innerHTML = ''; builtFor = -1;
+  TV.changed();   // the TV goes to the board as before: "<Team> buzzed first!"
+}
+function uncover() { if (!covered()) return; S.round.fo.cover = false; save(); render(); }
+// A hold, not a tap, so a buzzing hand that lands on it can't open it.
+let holdTimer = null;
+function holdStart(e) {
+  e.preventDefault();
+  const b = $('btnShowAnswers');
+  b.style.setProperty('--hold', HOLD_MS() + 'ms'); b.classList.add('holding');
+  clearTimeout(holdTimer); holdTimer = setTimeout(() => { b.classList.remove('holding'); uncover(); }, HOLD_MS());
+}
+function holdEnd() { clearTimeout(holdTimer); $('btnShowAnswers').classList.remove('holding'); }
 
 // ---------- events ----------
 $('file').addEventListener('change', (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); e.target.value = ''; });
@@ -1674,6 +1721,11 @@ $('btnStrike').addEventListener('click', () => {
   const c = guessContext(); if (c && !busy) playOut(c, -1);   // the TV gets "Survey says…" then the X
 });
 $('btnUndo').addEventListener('click', undo);
+$('btnCoverUndo').addEventListener('click', undo);
+$('btnShowAnswers').addEventListener('pointerdown', holdStart);
+['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => $('btnShowAnswers').addEventListener(ev, holdEnd));
+// From a keyboard (Enter or Space), it opens straight away: a key press is never a stray buzz.
+$('btnShowAnswers').addEventListener('click', (e) => { if (e.detail === 0) uncover(); });
 document.querySelectorAll('.mult button').forEach((b) => b.addEventListener('click', () => doAction('×' + b.dataset.mult, () => setMult(Number(b.dataset.mult)))));
 $('bStatus').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
