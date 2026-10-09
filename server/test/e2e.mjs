@@ -76,6 +76,13 @@ async function gateIpad(page) {
   return gate;
 }
 
+// After a buzz on a TV game the iPad is covered; the game master holds the button to see the answers.
+async function showAnswers(page) {
+  await page.waitForSelector('#cover.active');
+  await page.locator('#btnShowAnswers').dispatchEvent('pointerdown');
+  await page.waitForTimeout(400);
+  await page.waitForSelector('#board.active');
+}
 async function judge(page, idx) {   // idx: answer index, or -1 for "not on board" / strike
   // Joined to a TV the iPad is the GM console: tap the answer they gave, or ✗.
   if (await page.evaluate(() => document.body.classList.contains('console'))) {
@@ -158,8 +165,26 @@ try {
   await shot(tv, 'tv-4-buzzed');
   step('face-off: the question stays hidden and unsent until arming counts 3-2-1, a tap during the count is ignored, then the buzz winner shows on the TV');
 
-  await ipad.waitForSelector('#board.active');
+  // The iPad is still between the players: a cover in the team's colour, and no answer anywhere on the page.
+  await ipad.waitForSelector('#cover.active.t0');
   await tv.waitForSelector('#board.active');
+  const q1answers = (await ipad.evaluate(() => JSON.parse(localStorage.getItem('family-feud-state-v1')))).questions[0].answers.map((a) => a.text);
+  const pageText = await ipad.evaluate(() => document.body.innerText + ' ' + document.getElementById('grid').textContent);
+  assert.deepEqual(q1answers.filter((a) => pageText.includes(a)), [], 'an answer is on the covered iPad');
+  assert.ok((await ipad.textContent('#coverWho')).includes('buzzed first'));
+  assert.ok((await tv.textContent('#bStatus')).includes('buzzed first'), 'the TV says who buzzed, as before');
+  await shot(ipad, 'ipad-1b-covered');
+  // A quick tap (a stray buzz hand) doesn't open it; Undo takes the buzz back; a hold opens it.
+  await ipad.locator('#btnShowAnswers').dispatchEvent('pointerdown');
+  await ipad.locator('#btnShowAnswers').dispatchEvent('pointerup');
+  await ipad.waitForTimeout(400);
+  assert.ok(await ipad.$('#cover.active'), 'a tap opened the cover');
+  await ipad.click('#btnCoverUndo');
+  await ipad.waitForSelector('#faceoff.active');
+  await tv.waitForSelector('#faceoff .zone.armed');
+  await ipad.locator('.zone[data-side="0"]').dispatchEvent('pointerdown');
+  await showAnswers(ipad);
+  step('after the buzz the iPad is covered (no answer on the page, a tap doesn’t open it, the buzz can be undone) until the game master holds Show answers');
   await judge(ipad, 0);                                           // the buzz winner says the top answer
   await tv.waitForFunction(() => document.querySelectorAll('#grid .slot.flipped').length === 1);
   const top = (await ipad.evaluate(() => JSON.parse(localStorage.getItem('family-feud-state-v1')))).questions[0].answers[0].text;
@@ -359,7 +384,7 @@ try {
   await ipH.click('#btnArm');
   await tvH.waitForSelector('#faceoff .zone.armed');
   await ipH.locator('.zone[data-side="0"]').dispatchEvent('pointerdown');
-  await ipH.waitForSelector('#board.active');
+  await showAnswers(ipH);
   // On the console: each answer's hint is visible under it.
   const firstHint = await ipH.$eval('#grid .slot[data-i="0"] .hint', (h) => ({ text: h.textContent, shown: getComputedStyle(h).display !== 'none' }));
   assert.ok(firstHint.shown && firstHint.text.includes('áo khoác'), JSON.stringify(firstHint));
