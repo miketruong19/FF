@@ -18,9 +18,17 @@ body { background: var(--bg); color: var(--text); overflow: hidden; cursor: defa
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
 .screen { display: none; position: fixed; inset: 0; flex-direction: column; }
 .screen.active { display: flex; }
-/* Team photos show whole (contain, never cropped) in a rounded rectangle; a wide group photo stays wide. */
-.photo { width: auto; border-radius: 1.6vh; object-fit: contain; background: rgba(11,18,32,.55); box-shadow: 0 0 0 .3vh rgba(255,255,255,.55); flex: none; }
-.photo[hidden] { display: none; }
+/* Team photos: each shows whole (contain) in a fixed 3:2 frame, the same size on both sides
+   whatever the photo's shape, so the two teams mirror. When only one team has a photo, the
+   other's frame shows its initials; with no photos at all, the frames go. */
+.pf { position: relative; flex: none; aspect-ratio: 3 / 2; max-width: 100%; border-radius: 1.6vh; overflow: hidden; container-type: size;
+  background: rgba(11,18,32,.55); box-shadow: 0 0 0 .3vh rgba(255,255,255,.55); display: flex; align-items: center; justify-content: center; }
+.pf img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.pf .mono { font-size: 42cqh; font-weight: 900; letter-spacing: .04em; color: rgba(255,255,255,.4); }
+.pf img:not([hidden]) + .mono { display: none; }
+body.nopf .pf { display: none; }
+/* Text that's fitted to its box (fitAll): it shrinks to a readable minimum, then wraps. */
+.fit { overflow-wrap: anywhere; }
 
 /* ---- waiting for an iPad ---- */
 #wait { align-items: center; justify-content: center; gap: 3vh; text-align: center; padding: 4vh; }
@@ -30,48 +38,57 @@ body { background: var(--bg); color: var(--text); overflow: hidden; cursor: defa
 #wait .how { font-size: 4vh; color: var(--muted); max-width: 70vw; line-height: 1.35; }
 #wait .how b { color: var(--text); }
 #wait .ready { font-size: 4.5vh; font-weight: 800; color: var(--green); }
-#wait .teams { display: flex; gap: 6vw; align-items: center; font-size: 5vh; font-weight: 800; }
-#wait .teams div { display: flex; align-items: center; gap: 2vh; }
-#wait .teams .photo { height: 16vh; max-width: 34vh; }
+#wait.joined { gap: 2.4vh; }
+#wait.joined .code { font-size: 16vh; }
+#wait .teams { display: grid; grid-template-columns: 1fr 1fr; gap: 6vw; width: min(90vw, 130vh); font-weight: 800; }
+#wait .teams > div { display: flex; flex-direction: column; align-items: center; gap: 1.6vh; min-width: 0; }
+#wait .teams .pf { height: 18vh; }
+#wait .teams span { display: block; width: 100%; font-size: 5vh; line-height: 1.1; }
 
 /* ---- face-off ---- */
-#faceoff { padding: 2vh; gap: 2vh; }
-.f-top, .b-top { text-align: center; }
-.qn { color: var(--muted); font-size: 2.6vh; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+#faceoff { padding: 2vh; gap: 2.4vh; }
+/* The question block: the English, then Tagalog, then Vietnamese, on an even rhythm. It's never
+   covered: the zones and the board below shrink instead. */
+.f-top, .b-top { flex: none; text-align: center; padding: 0 4vh; }
+.qn { color: var(--muted); font-size: 2.6vh; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; line-height: 1.2; }
 .qn .mult { color: #1c1917; background: var(--gold); border-radius: 1vh; padding: .2vh 1.2vh; margin-left: 1.2vh; }
-.q { font-size: 6vh; font-weight: 800; line-height: 1.15; text-wrap: balance; }
+.q { font-size: 6vh; font-weight: 800; line-height: 1.15; text-wrap: balance; margin-top: .6vh; }
 .q.hidden { color: var(--muted); font-style: italic; font-weight: 600; }
-/* Tagalog and Vietnamese under the English question: smaller, each with a small label. */
-.tr { display: grid; gap: .3vh; margin-top: .6vh; }
+/* Tagalog and Vietnamese under the English: centred as one block, each line with a label of
+   the same width on its baseline, and a long line wrapping under its own text. */
+.tr { display: grid; grid-template-columns: auto auto; justify-content: center; align-items: baseline; column-gap: 1.4vh; row-gap: .8vh; margin-top: 1.4vh; }
 .tr:empty { display: none; }
-.tr div { font-size: 3.1vh; font-weight: 700; color: #cbd5e1; line-height: 1.2; text-wrap: balance; }
-.tr b { display: inline-block; font-size: 1.7vh; font-weight: 800; letter-spacing: .1em; color: var(--muted);
-  border: .2vh solid #475569; border-radius: .6vh; padding: 0 .8vh; margin-right: 1vh; vertical-align: .5vh; }
-.has-tr .q { font-size: 5vh; }
+.tr div { display: contents; }
+.tr span { min-width: 0; text-align: left; font-size: 3.1vh; font-weight: 700; color: #cbd5e1; line-height: 1.2; }
+.tr b { justify-self: end; min-width: 15vh; text-align: center; font-size: 1.7vh; font-weight: 800; letter-spacing: .1em; color: var(--muted);
+  border: .2vh solid #475569; border-radius: .6vh; padding: .1vh .8vh; line-height: 1.3; }
 .f-zones { flex: 1; display: flex; gap: 2vh; min-height: 0; }
-.zone { flex: 1; border-radius: 3vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vh;
+/* Each zone is the same fixed grid: photo frame (takes what's left), name row, BUZZ row, note row. */
+.zone { flex: 1 1 0; min-width: 0; min-height: 0; overflow: hidden; border-radius: 3vh; padding: 2.4vh 2vh 1vh;
+  display: grid; grid-template-rows: minmax(0, 1fr) 11vh 15vh 5vh; justify-items: center; align-items: center; row-gap: 1vh;
   filter: brightness(.5); transition: filter .15s, box-shadow .15s; }
+body.nopf .zone { grid-template-rows: 0 11vh 15vh 5vh; align-content: center; }
 .zone.t0 { background: var(--a-dark); } .zone.t1 { background: var(--b-dark); }
-.zone .photo { height: 34vh; max-width: 92%; }
-.zone .name { font-size: 7vh; font-weight: 900; text-transform: uppercase; letter-spacing: .03em; text-align: center; padding: 0 2vh; }
-.zone .big { font-size: 13vh; font-weight: 900; letter-spacing: .05em; line-height: 1; min-height: 1em; }
-.zone .sub { font-size: 4vh; font-weight: 800; color: var(--gold); min-height: 1.2em; }
+.zone .pf { grid-row: 1; height: 100%; }
+.zone .name { grid-row: 2; width: 100%; font-size: 7vh; font-weight: 900; text-transform: uppercase; letter-spacing: .03em; text-align: center; line-height: 1.05; }
+.zone .big { grid-row: 3; font-size: min(13vh, 8vw); font-weight: 900; letter-spacing: .05em; line-height: 1; }
+.zone .sub { grid-row: 4; font-size: 4vh; font-weight: 800; color: var(--gold); line-height: 1.2; }
 .zone.armed { filter: brightness(1); }
 .zone.armed.t0 { background: var(--a); } .zone.armed.t1 { background: var(--b); }
 .zone.armed .big { animation: pulse .5s ease-in-out infinite alternate; }
 .zone.winner { filter: brightness(1.1); box-shadow: 0 0 0 1.2vh var(--gold) inset, 0 0 8vh rgba(251,191,36,.6); }
 .zone.winner.t0 { background: var(--a); } .zone.winner.t1 { background: var(--b); }
 .zone.count { filter: brightness(1); }
-.zone.count .big { color: var(--gold); font-size: 22vh; animation: countpop .9s ease-out; }
+.zone.count .big { color: var(--gold); font-size: 15vh; animation: countpop .9s ease-out; }
 @keyframes countpop { 0% { transform: scale(1.6); opacity: 0; } 25% { transform: scale(1); opacity: 1; } 100% { opacity: 1; } }
 .q.veiled { color: var(--muted); font-style: italic; font-weight: 700; }
 .q.reveal { animation: qreveal .6s ease-out; }
 @keyframes qreveal { 0% { opacity: 0; transform: translateY(2vh); } 100% { opacity: 1; transform: none; } }
-.f-msg { text-align: center; font-size: 4.5vh; font-weight: 800; color: var(--gold); min-height: 6vh; }
+.f-msg { flex: none; text-align: center; font-size: 4.5vh; font-weight: 800; color: var(--gold); line-height: 1.2; min-height: 5.4vh; padding: 0 4vh; }
 
 /* ---- board ---- */
 #board { padding: 1.6vh; gap: 1.4vh; }
-.status { display: flex; align-items: center; justify-content: center; min-height: 7vh; border-radius: 1.6vh; font-size: 4.2vh; font-weight: 900; padding: .6vh 2vh; text-align: center; }
+.status { flex: none; display: flex; align-items: center; justify-content: center; min-height: 7vh; border-radius: 1.6vh; font-size: 4.2vh; font-weight: 900; padding: .6vh 2vh; text-align: center; line-height: 1.15; }
 .status.fo { background: #1e3a8a; } .status.play { background: var(--panel); } .status.steal { background: #7f1d1d; }
 .status.over { background: #713f12; color: var(--gold); } .status.survey { background: #0b1220; color: var(--gold); }
 .status.survey span { animation: pulse .6s ease-in-out infinite alternate; font-size: 5vh; }
@@ -85,7 +102,7 @@ body { background: var(--bg); color: var(--text); overflow: hidden; cursor: defa
 .front { background: linear-gradient(180deg, #1d4ed8, #1e3a8a); border: .5vh solid #3b82f6; font-size: 7vh; }
 .front span { background: #0b1220; border-radius: 50%; width: 1.5em; height: 1.5em; display: flex; align-items: center; justify-content: center; }
 .back { background: linear-gradient(180deg, #fde68a, #f59e0b); color: #1c1917; transform: rotateY(180deg); padding: 0 2.2vh; justify-content: space-between; gap: 1.6vh; }
-.back .ans { font-size: 5vh; text-transform: uppercase; line-height: 1.05; flex: 1; }
+.back .ans { font-size: 5vh; text-transform: uppercase; line-height: 1.05; flex: 1; min-width: 0; }
 .back .pts { font-size: 6vh; background: #1c1917; color: var(--gold); border-radius: 1.4vh; padding: .4vh 1.8vh; min-width: 2.2em; text-align: center; }
 .slot.empty .inner { transform: none !important; }
 .slot.empty .front { background: #111827; border-color: #1f2937; }
@@ -99,27 +116,29 @@ body { background: var(--bg); color: var(--text); overflow: hidden; cursor: defa
 .strikes { display: flex; gap: 1vh; }
 .sbox { flex: 1 1 0; min-width: 0; height: 8vh; border-radius: 1.4vh; background: var(--panel); display: flex; align-items: center; justify-content: center; font-size: 6vh; font-weight: 900; color: #334155; }
 .sbox.on { background: var(--red); color: #fff; }
-.teams { display: flex; gap: 1.6vh; }
-.team { flex: 1; border-radius: 2vh; padding: 1.2vh 2vh; display: flex; align-items: center; gap: 2vh; min-width: 0; }
+/* The scoreboard mirrors: photo, name, score on the left; score, name, photo on the right. */
+.teams { flex: none; display: flex; gap: 1.6vh; }
+.team { flex: 1 1 0; border-radius: 2vh; padding: 1.2vh 2vh; display: flex; align-items: center; gap: 2vh; min-width: 0; min-height: 13.4vh; }
+.team.t1 { flex-direction: row-reverse; }
 .team.t0 { background: var(--a-dark); } .team.t1 { background: var(--b-dark); }
 .team.control { box-shadow: 0 0 0 .7vh var(--gold); }
 .team.steal { box-shadow: 0 0 0 .7vh var(--red); animation: stealpulse 1s infinite alternate; }
 @keyframes stealpulse { from { box-shadow: 0 0 0 .7vh var(--red); } to { box-shadow: 0 0 0 .7vh var(--red), 0 0 5vh var(--red); } }
-.team .photo { height: 11vh; max-width: 24vh; }
-.team .name { flex: 1; min-width: 0; font-size: 4.6vh; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.team .score { font-size: 7vh; font-weight: 900; background: rgba(0,0,0,.3); border-radius: 1.4vh; padding: 0 2vh; min-width: 12vh; text-align: center; font-variant-numeric: tabular-nums; }
+.team .pf { height: min(11vh, 6.5vw); }   /* a little smaller on a 4:3 screen, to leave the name room */
+.team .name { flex: 1; min-width: 0; font-size: 4.6vh; font-weight: 900; line-height: 1.1; }
+.team.t1 .name { text-align: right; }
+.team .score { font-size: 7vh; font-weight: 900; background: rgba(0,0,0,.3); border-radius: 1.4vh; padding: 0 1.6vh; min-width: 10vh; text-align: center; font-variant-numeric: tabular-nums; }
 
 /* ---- end ---- */
 #end { align-items: center; justify-content: center; gap: 4vh; text-align: center; }
 #end .title { font-size: 4vh; color: var(--muted); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-#end .winner { font-size: 10vh; font-weight: 900; color: var(--gold); line-height: 1.05; }
-#end .scores { display: flex; gap: 4vh; }
-#end .eteam { border-radius: 3vh; padding: 3vh 6vh; min-width: 36vh; display: flex; flex-direction: column; align-items: center; gap: 1.4vh; }
+#end .winner { font-size: 10vh; font-weight: 900; color: var(--gold); line-height: 1.05; padding: 0 4vh; }
+#end .scores { display: grid; grid-template-columns: 1fr 1fr; gap: 4vh; width: min(92vw, 150vh); }
+#end .eteam { min-width: 0; border-radius: 3vh; padding: 3vh; display: flex; flex-direction: column; align-items: center; gap: 1.4vh; }
 #end .eteam.t0 { background: var(--a-dark); } #end .eteam.t1 { background: var(--b-dark); }
 #end .eteam.won { box-shadow: 0 0 0 1vh var(--gold); }
-#end .eteam .photo { height: 18vh; max-width: 36vh; }
-#end .eteam.won .photo { height: 34vh; max-width: 64vh; }
-#end .eteam .n { font-size: 5vh; font-weight: 900; }
+#end .eteam .pf { height: 26vh; }
+#end .eteam .n { width: 100%; font-size: 5vh; font-weight: 900; line-height: 1.1; }
 #end .eteam .s { font-size: 11vh; font-weight: 900; line-height: 1; }
 /* The game's winner, full screen: their photo whole (contain) over a blurred, darkened copy of
    itself, with the result on a dark band along the bottom. A tie, or a winner with no photo,
@@ -131,7 +150,7 @@ body { background: var(--bg); color: var(--text); overflow: hidden; cursor: defa
 #champ .pic { position: absolute; inset: 0 0 22vh; width: 100%; height: calc(100% - 22vh); object-fit: contain; padding: 3vh 3vh 0; }
 #champ .band { position: absolute; left: 0; right: 0; bottom: 0; height: 26vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2vh;
   background: linear-gradient(to top, rgba(2,6,23,.96) 60%, rgba(2,6,23,0)); text-align: center; padding: 0 4vh; }
-#champ .who { font-size: 11vh; font-weight: 900; color: var(--gold); line-height: 1; text-shadow: 0 .6vh 3vh rgba(0,0,0,.9); text-wrap: balance; }
+#champ .who { width: 100%; font-size: 11vh; font-weight: 900; color: var(--gold); line-height: 1; text-shadow: 0 .6vh 3vh rgba(0,0,0,.9); text-wrap: balance; }
 #champ .final { font-size: 4.4vh; font-weight: 800; color: #f8fafc; text-shadow: 0 .4vh 2vh rgba(0,0,0,.9); font-variant-numeric: tabular-nums; }
 #champ .final b { color: var(--gold); }
 #champ .final span { color: #94a3b8; margin: 0 1.6vh; }
@@ -162,24 +181,24 @@ body { background: var(--bg); color: var(--text); overflow: hidden; cursor: defa
   <div class="how" id="wHow">Getting a game code…</div>
   <div class="ready" id="wReady" hidden></div>
   <div class="teams" id="wTeams" hidden>
-    <div><img class="photo" data-photo="0" alt="" hidden><span data-name="0"></span></div>
-    <div><img class="photo" data-photo="1" alt="" hidden><span data-name="1"></span></div>
+    <div><div class="pf"><img data-photo="0" alt="" hidden><b class="mono" data-mono="0"></b></div><span class="fit" data-name="0"></span></div>
+    <div><div class="pf"><img data-photo="1" alt="" hidden><b class="mono" data-mono="1"></b></div><span class="fit" data-name="1"></span></div>
   </div>
   <div id="soundHint">Click anywhere on this screen to turn on sound</div>
 </section>
 
 <section id="faceoff" class="screen">
-  <div class="f-top"><div class="qn" id="fQn"></div><div class="q" id="fQ"></div><div class="tr" id="fTr"></div></div>
+  <div class="f-top"><div class="qn" id="fQn"></div><div class="q fit" id="fQ"></div><div class="tr" id="fTr"></div></div>
   <div class="f-zones">
-    <div class="zone t0"><img class="photo" data-photo="0" alt="" hidden><div class="name" data-name="0"></div><div class="big"></div><div class="sub"></div></div>
-    <div class="zone t1"><img class="photo" data-photo="1" alt="" hidden><div class="name" data-name="1"></div><div class="big"></div><div class="sub"></div></div>
+    <div class="zone t0"><div class="pf"><img data-photo="0" alt="" hidden><b class="mono" data-mono="0"></b></div><div class="name fit" data-name="0"></div><div class="big"></div><div class="sub"></div></div>
+    <div class="zone t1"><div class="pf"><img data-photo="1" alt="" hidden><b class="mono" data-mono="1"></b></div><div class="name fit" data-name="1"></div><div class="big"></div><div class="sub"></div></div>
   </div>
-  <div class="f-msg" id="fMsg"></div>
+  <div class="f-msg fit" id="fMsg"></div>
 </section>
 
 <section id="board" class="screen">
-  <div class="b-top"><div class="qn" id="bQn"></div><div class="q" id="bQ"></div><div class="tr" id="bTr"></div></div>
-  <div class="status" id="bStatus"></div>
+  <div class="b-top"><div class="qn" id="bQn"></div><div class="q fit" id="bQ"></div><div class="tr" id="bTr"></div></div>
+  <div class="status fit" id="bStatus"></div>
   <div class="b-main">
     <div class="grid" id="grid"></div>
     <div class="side">
@@ -188,19 +207,19 @@ body { background: var(--bg); color: var(--text); overflow: hidden; cursor: defa
     </div>
   </div>
   <div class="teams">
-    <div class="team t0"><img class="photo" data-photo="0" alt="" hidden><div class="name" data-name="0"></div><div class="score" data-score="0">0</div></div>
-    <div class="team t1"><img class="photo" data-photo="1" alt="" hidden><div class="name" data-name="1"></div><div class="score" data-score="1">0</div></div>
+    <div class="team t0"><div class="pf"><img data-photo="0" alt="" hidden><b class="mono" data-mono="0"></b></div><div class="name fit" data-name="0"></div><div class="score" data-score="0">0</div></div>
+    <div class="team t1"><div class="pf"><img data-photo="1" alt="" hidden><b class="mono" data-mono="1"></b></div><div class="name fit" data-name="1"></div><div class="score" data-score="1">0</div></div>
   </div>
 </section>
 
 <section id="end" class="screen">
   <div class="title">Final score</div>
-  <div class="winner" id="eWinner"></div>
+  <div class="winner fit" id="eWinner"></div>
   <div class="scores">
-    <div class="eteam t0"><img class="photo" data-photo="0" alt="" hidden><div class="n" data-name="0"></div><div class="s" data-score="0"></div></div>
-    <div class="eteam t1"><img class="photo" data-photo="1" alt="" hidden><div class="n" data-name="1"></div><div class="s" data-score="1"></div></div>
+    <div class="eteam t0"><div class="pf"><img data-photo="0" alt="" hidden><b class="mono" data-mono="0"></b></div><div class="n fit" data-name="0"></div><div class="s" data-score="0"></div></div>
+    <div class="eteam t1"><div class="pf"><img data-photo="1" alt="" hidden><b class="mono" data-mono="1"></b></div><div class="n fit" data-name="1"></div><div class="s" data-score="1"></div></div>
   </div>
-  <div id="champ"><img class="bg" alt=""><img class="pic" alt=""><div class="band"><div class="who" id="cWho"></div><div class="final" id="cFinal"></div></div></div>
+  <div id="champ"><img class="bg" alt=""><img class="pic" alt=""><div class="band"><div class="who fit" id="cWho"></div><div class="final fit" id="cFinal"></div></div></div>
 </section>
 
 <div id="flash"></div>
@@ -303,7 +322,7 @@ setInterval(() => {
 const tname = (t) => (view && view.teams && view.teams[t] && view.teams[t].name) || (t ? 'Team B' : 'Team A');
 // The question in Tagalog and Vietnamese, under the English, once it shows. Answers stay English.
 function trLines(v) {
-  return (v.tl ? '<div><b>TAGALOG</b>' + esc(v.tl) + '</div>' : '') + (v.vi ? '<div><b>TIẾNG VIỆT</b>' + esc(v.vi) + '</div>' : '');
+  return (v.tl ? '<div><b>TAGALOG</b><span class="fit">' + esc(v.tl) + '</span></div>' : '') + (v.vi ? '<div><b>TIẾNG VIỆT</b><span class="fit">' + esc(v.vi) + '</span></div>' : '');
 }
 function setTr(id, v) {
   const el = $(id), html = v.q == null ? '' : trLines(v);
@@ -314,20 +333,67 @@ function show(id) { document.querySelectorAll('.screen').forEach((s) => s.classL
 function showPhotos() {
   document.querySelectorAll('img[data-photo]').forEach((img) => {
     const p = photos[Number(img.dataset.photo)];
-    img.hidden = !p; if (p) img.src = p; else img.removeAttribute('src');
+    img.hidden = !p; if (p) { if (img.getAttribute('src') !== p) img.src = p; } else img.removeAttribute('src');
   });
+  document.body.classList.toggle('nopf', !photos[0] && !photos[1]);
 }
+// Fits text to its box: the largest size (in vh) between max and min at which every element
+// in the group fits on `lines` lines without spilling sideways; below min it wraps instead.
+// A group (both team names, both translations) gets one size, so the two sides match.
+function fitText(els, max, min, lines, inBox) {
+  els = els.filter((e) => e && e.offsetParent && e.textContent);
+  if (!els.length) return;
+  const vh = innerHeight / 100;
+  const set = (s) => { for (const e of els) e.style.fontSize = s * vh + 'px'; };
+  const fits = (e) => {
+    if (e.scrollWidth > e.clientWidth + 1) return false;
+    if (inBox) {
+      const cs = getComputedStyle(e), lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2;
+      return e.offsetHeight <= lh * lines + 2 && e.offsetHeight <= e.parentElement.clientHeight;
+    }
+    // Lines in use: the distinct rows the text's line boxes sit on.
+    const r = document.createRange(); r.selectNodeContents(e);
+    return new Set([...r.getClientRects()].map((c) => Math.round(c.top))).size <= lines;
+  };
+  set(max);
+  if (els.every(fits)) return;
+  let lo = min, hi = max;
+  for (let i = 0; i < 7; i++) { const mid = (lo + hi) / 2; set(mid); if (els.every(fits)) lo = mid; else hi = mid; }
+  set(lo);
+}
+const NAMES = { wait: [5, 3], faceoff: [7, 3.6], board: [4.6, 2.6], end: [5, 3] };
+function fitAll() {
+  const s = document.querySelector('.screen.active');
+  if (!s) return;
+  const all = (sel) => [...s.querySelectorAll(sel)];
+  const q = s.querySelector('.q');
+  if (q) fitText([q], q.parentElement.classList.contains('has-tr') ? 5.2 : 6, 3.2, 2);
+  fitText(all('.tr span'), 3.1, 2.1, 1);
+  if (NAMES[s.id]) fitText(all('[data-name]'), NAMES[s.id][0], NAMES[s.id][1], 1);
+  fitText(all('.f-msg'), 4.5, 2.6, 1);
+  const st = s.querySelector('.status');
+  if (st && !st.classList.contains('survey')) fitText([st], 4.2, 2.4, 1);
+  for (const a of all('.ans')) fitText([a], 5, 2.4, 2, true);
+  fitText(all('#end:not(.champ) .winner'), 10, 5, 1);
+  fitText(all('#end.champ .who'), 11, 5, 1);
+  fitText(all('#end.champ .final'), 4.4, 2.6, 1);
+}
+window.addEventListener('resize', fitAll);
 function tag() {
   const t = $('tag');
   const msg = !live ? 'Reconnecting…' : (everHost && !hostOnline ? 'Waiting for the iPad…' : '');
   t.textContent = msg; t.classList.toggle('on', !!msg);
   $('corner').textContent = code && view && view.phase !== 'setup' ? code : '';
 }
+const initials = (s) => s.split(/\s+/).filter(Boolean).slice(0, 3).map((w) => [...w][0]).join('').toUpperCase();
 function names() {
   document.querySelectorAll('[data-name]').forEach((el) => { el.textContent = tname(Number(el.dataset.name)); });
+  document.querySelectorAll('[data-mono]').forEach((el) => { el.textContent = initials(tname(Number(el.dataset.mono))); });
   document.querySelectorAll('[data-score]').forEach((el) => { el.textContent = view && view.teams ? view.teams[Number(el.dataset.score)].score : 0; });
 }
-function draw() {
+// Every redraw refits the text to the screen it ends on.
+function draw() { drawScreen(); fitAll(); }
+function drawScreen() {
   tag(); showPhotos();
   const v = view;
   if (!v || v.phase === 'setup') {
@@ -338,6 +404,7 @@ function draw() {
       : 'On the iPad, open <b>' + esc(location.host) + '</b> and type this code.';
     $('wReady').hidden = !hostOnline; $('wReady').textContent = hostOnline ? 'iPad connected ✓' : '';
     $('wTeams').hidden = !(hostOnline && v);
+    $('wait').classList.toggle('joined', !$('wTeams').hidden);
     names(); return;
   }
   names();

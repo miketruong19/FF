@@ -139,8 +139,12 @@ try {
   assert.equal(await tv.textContent('#fQ'), 'Face-off');
   assert.notEqual(await ipad.textContent('#foQ'), q1);
   assert.ok(!tvFrames.some((f) => f.includes(JSON.stringify(q1).slice(1, -1))), 'the question reached the TV before arming');
-  await tv.waitForFunction(() => !document.querySelector('#faceoff .photo[data-photo="0"]').hidden);
-  assert.equal(await tv.$eval('#faceoff .photo[data-photo="1"]', (e) => e.hidden), true);
+  await tv.waitForFunction(() => !document.querySelector('#faceoff img[data-photo="0"]').hidden);
+  assert.equal(await tv.$eval('#faceoff img[data-photo="1"]', (e) => e.hidden), true);
+  // The team without a photo keeps a frame the same size, showing its initials, so the two sides mirror.
+  const frames = await tv.$$eval('#faceoff .pf', (fs) => fs.map((f) => { const r = f.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height), Math.round(r.top)]; }));
+  assert.deepEqual(frames[0], frames[1], 'both photo frames the same size and height');
+  assert.ok(await tv.$eval('#faceoff [data-mono="1"]', (e) => e.offsetParent && e.textContent.length > 0), 'initials in the empty frame');
   await ipad.click('#btnArm');
   // A tap during the count is ignored: no buzz winner.
   await ipad.locator('.zone[data-side="1"]').dispatchEvent('pointerdown');
@@ -245,7 +249,7 @@ try {
   await tvB.waitForSelector('#faceoff.active');
   assert.equal(await tvB.textContent('#faceoff .zone.t0 .name'), 'Cousins');
   assert.equal(await tv.textContent('.team.t0 .name'), 'Sambranos');
-  assert.equal(await tvB.$eval('#faceoff .photo[data-photo="0"]', (e) => e.hidden), true, 'room B has no photo from room A');
+  assert.equal(await tvB.$eval('#faceoff img[data-photo="0"]', (e) => e.hidden), true, 'room B has no photo from room A');
   await shot(tvB, 'tv-7-second-room');
   await ipadBCtx.close(); await tvBCtx.close();
   step('two rooms run side by side and never see each other (' + code + ' and ' + codeB + ')');
