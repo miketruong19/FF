@@ -70,7 +70,8 @@ input[type=text] {
 /* A team's photo: round, cropped to fill. Only shown once one is set. */
 .tphoto { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; flex: none; background: #0b1220; box-shadow: 0 0 0 2px rgba(255,255,255,.55); }
 .tphoto[hidden] { display: none; }
-.tphoto-row .tphoto { width: 56px; height: 56px; }
+/* Setup: a bigger preview that shows the whole photo, not a circle crop. */
+.tphoto-row .tphoto { width: auto; height: 96px; max-width: 220px; border-radius: 12px; object-fit: contain; }
 /* GM console: when the iPad is joined to a TV, the TV is the game screen and the iPad is the GM's.
    Every answer shows flat with its points; no flips, no X overlay, no sounds; scores in a slim strip. */
 body.console #gmToggle, body.console .gm-banner, body.console #strikeFlash, body.console .btn-sound { display: none !important; }
@@ -637,7 +638,7 @@ async function loadBuiltIn(i, quiet) {
 // the iPad to PHOTO_SIDE px on its longest side and kept in this browser's
 // IndexedDB, so it survives reloads and works offline. Photos never leave the
 // iPad: nothing here sends them anywhere, and they aren't in the repo or on Pages.
-const PHOTO_SIDE = 512;
+const PHOTO_SIDE = 1024;
 let photos = [null, null];   // data: URLs, or null for a team with no photo
 function photoStore(mode, fn) {
   return new Promise((resolve, reject) => {
@@ -709,7 +710,8 @@ function showPhotos() {
 // small snapshot of what the players can see after every change: answers only once revealed, never
 // the GM's list. Photos go once, shrunk to 256px. If the line drops, the game carries on here and the
 // TV catches up from the next snapshot. The room also keeps a backup of the game for Resume.
-const TV_PHOTO_SIDE = 256;
+const TV_PHOTO_SIDE = 768;
+const TV_PHOTO_MAX = 180 * 1024;   // characters of data: URL; the room refuses more (shared/room.js LIMITS.photo)
 // Joined to a TV room (even while reconnecting): the iPad is the GM console, the TV the game screen.
 const consoleMode = () => document.body.classList.contains('console');
 let tvX = 0, tvXn = 1;   // counts the X flashes (and how many X's the last one showed) (strikes, face-off misses, missed steals), so the TV flashes each once
@@ -732,7 +734,7 @@ function tvView() {
   v.survey = busy; v.x = tvX; v.xn = tvXn; v.passed = !!r.passed;
   return v;
 }
-function shrinkData(data, side) {
+function shrinkData(data, side, max) {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
@@ -740,7 +742,10 @@ function shrinkData(data, side) {
       const c = document.createElement('canvas');
       c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      resolve(c.toDataURL('image/jpeg', 0.8));
+      // As sharp as fits: lower the JPEG quality step by step until it's under the size cap.
+      let out = null;
+      for (const q of [0.85, 0.75, 0.65, 0.55, 0.45]) { out = c.toDataURL('image/jpeg', q); if (!max || out.length <= max) break; }
+      resolve(!max || out.length <= max ? out : null);
     };
     img.onerror = () => resolve(null);
     img.src = data;
@@ -821,7 +826,7 @@ const TV = (() => {
   }
   async function sendPhoto(t) {
     if (offer) return;
-    const data = photos[t] ? await shrinkData(photos[t], TV_PHOTO_SIDE) : null;
+    const data = photos[t] ? await shrinkData(photos[t], TV_PHOTO_SIDE, TV_PHOTO_MAX) : null;
     send({ t: 'photo', team: t, data });
   }
   function sendPhotos() { sendPhoto(0); sendPhoto(1); }

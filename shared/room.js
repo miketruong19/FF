@@ -24,7 +24,7 @@
 export const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';   // no I or O, and no digits, so no 0/O or 1/I mix-ups
 export const CODE_LENGTH = 4;
 export const IDLE_MS = 12 * 60 * 60 * 1000;                // a room nobody has touched for 12 hours is dropped
-export const LIMITS = { view: 16 * 1024, photo: 160 * 1024, backup: 512 * 1024 };
+export const LIMITS = { view: 16 * 1024, photo: 192 * 1024, backup: 512 * 1024 };   // a photo is a ~768px JPEG data: URL
 
 export function newCode(random = Math.random) {
   let c = '';

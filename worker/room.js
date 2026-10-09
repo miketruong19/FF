@@ -13,7 +13,8 @@ const randomKey = () => {
   crypto.getRandomValues(b);
   return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 };
-const SAVED = ['code', 'key', 'view', 'photos', 'backup', 'touched'];
+// Each photo is its own key: one ~768px JPEG per value stays well inside the storage limits.
+const SAVED = ['code', 'key', 'view', 'photo0', 'photo1', 'backup', 'touched'];
 
 export class FFRoom extends DurableObject {
   constructor(ctx, env) {
@@ -46,7 +47,7 @@ export class FFRoom extends DurableObject {
     const room = new Room(s.get('code'), { makeKey: randomKey });
     room.key = s.get('key') ?? null;
     room.view = s.get('view') ?? null;
-    room.photos = s.get('photos') ?? [null, null];
+    room.photos = [s.get('photo0') ?? null, s.get('photo1') ?? null];
     room.backup = s.get('backup') ?? null;
     room.touched = s.get('touched') ?? Date.now();
     for (const ws of this.ctx.getWebSockets()) {
@@ -59,8 +60,14 @@ export class FFRoom extends DurableObject {
     return room;
   }
 
-  async save(room) {
-    await this.ctx.storage.put({ key: room.key, view: room.view, photos: room.photos, backup: room.backup, touched: room.touched });
+  // Writes only what a message changed (a photo is large; a snapshot is not).
+  async save(room, what) {
+    const v = { touched: room.touched };
+    if (!what || what === 'join') v.key = room.key;
+    if (what === 'view') v.view = room.view;
+    if (what === 'backup') v.backup = room.backup;
+    if (what === 'photo') { v.photo0 = room.photos[0]; v.photo1 = room.photos[1]; }
+    await this.ctx.storage.put(v);
     await this.ctx.storage.setAlarm(room.touched + IDLE_MS);
   }
 
@@ -93,11 +100,11 @@ export class FFRoom extends DurableObject {
     if (!msg || typeof msg !== 'object') return;
     if (!c.role && msg.t !== 'ping') {
       if (room.join(c, msg)) ws.serializeAttachment({ role: c.role });
-      await this.save(room);
+      await this.save(room, 'join');
       return;
     }
     room.receive(c, msg);
-    if (msg.t === 'view' || msg.t === 'photo' || msg.t === 'backup') await this.save(room);
+    if (msg.t === 'view' || msg.t === 'photo' || msg.t === 'backup') await this.save(room, msg.t);
   }
 
   async webSocketClose(ws) { await this.gone(ws); }
