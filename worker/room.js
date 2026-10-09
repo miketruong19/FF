@@ -13,7 +13,7 @@ const randomKey = () => {
   crypto.getRandomValues(b);
   return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 };
-// Each photo is its own key: one ~768px JPEG per value stays well inside the storage limits.
+// Each photo is its own key: one ~1024px JPEG per value stays well inside the storage limits.
 const SAVED = ['code', 'key', 'view', 'photo0', 'photo1', 'backup', 'touched'];
 
 export class FFRoom extends DurableObject {
